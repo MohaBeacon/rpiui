@@ -34,7 +34,7 @@ fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
     slint::invoke_from_event_loop(move || {
         if let Some(ui) = weak.upgrade() {
             ui.set_card_uid(SharedString::from(format!("Error: {}", msg)));
-            ui.set_is_scanning(false);
+            
         }
     }).unwrap();
 }
@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let weak = ui_handle.clone();
                 slint::invoke_from_event_loop(move || {
                     if let Some(ui) = weak.upgrade() {
-                        ui.set_reader_status(SharedString::from("PC/SC context error"));
+                        
                     }
                 }).unwrap();
                 return;
@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let weak = ui_handle.clone();
                 slint::invoke_from_event_loop(move || {
                     if let Some(ui) = weak.upgrade() {
-                        ui.set_reader_status(SharedString::from("Reader listing error"));
+                        
                     }
                 }).unwrap();
                 return;
@@ -95,7 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let weak = ui_handle.clone();
                 slint::invoke_from_event_loop(move || {
                     if let Some(ui) = weak.upgrade() {
-                        ui.set_reader_status(SharedString::from("ACR122U connected"));
+                       
                     }
                 }).unwrap();
                 r
@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let weak = ui_handle.clone();
                 slint::invoke_from_event_loop(move || {
                     if let Some(ui) = weak.upgrade() {
-                        ui.set_reader_status(SharedString::from("No reader found"));
+                        
                     }
                 }).unwrap();
                 return;
@@ -120,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let weak = ui_handle.clone();
             slint::invoke_from_event_loop(move || {
                 if let Some(ui) = weak.upgrade() {
-                    ui.set_is_scanning(true);
+                    
                 }
             }).unwrap();
 
@@ -180,7 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let weak = ui_handle.clone();
                         slint::invoke_from_event_loop(move || {
                             if let Some(ui) = weak.upgrade() {
-                                ui.set_card_uid(SharedString::from("Card removed"));
+                                
                             }
                         }).unwrap();
                     }
@@ -196,7 +196,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let weak = ui_handle.clone();
             slint::invoke_from_event_loop(move || {
                 if let Some(ui) = weak.upgrade() {
-                    ui.set_is_scanning(false);
+                    
                 }
             }).unwrap();
         }
