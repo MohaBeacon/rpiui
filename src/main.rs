@@ -6,6 +6,7 @@ use std::thread;
 use std::time::Duration;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
 use slint::SharedString;
+use lazy_static::lazy_static;
 
 slint::include_modules!();
 
@@ -17,12 +18,14 @@ struct Config {
     valid_uid_lengths: Vec<usize>,
 }
 
-const CONFIG: Config = Config {
-    scan_interval: Duration::from_millis(200),
-    stabilize_delay: Duration::from_millis(100),
-    reader_name: "ACR122",
-    valid_uid_lengths: vec![4, 7, 10], // Common NFC UID lengths
-};
+lazy_static! {
+    static ref CONFIG: Config = Config {
+        scan_interval: Duration::from_millis(200),
+        stabilize_delay: Duration::from_millis(100),
+        reader_name: "ACR122".to_string(),
+        valid_uid_lengths: vec![4, 7, 10], // Common NFC UID lengths
+    };
+}
 
 // Helper function to show errors in UI
 fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
