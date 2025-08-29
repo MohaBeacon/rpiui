@@ -2,6 +2,7 @@ import { AboutSlint, Button, VerticalBox } from "std-widgets.slint";
 
 
 export component AppWindow inherits Window {
+    in property <string> card_uid: "Waiting for card...";
     no-frame: true;
     width: 1200px;
     height: 800px;
@@ -42,6 +43,14 @@ export component AppWindow inherits Window {
                     width: 50%;
                     font-family: "Bebas Neue";
                     font-weight: 800;
+                }
+            }
+            Rectangle {
+                 Text {
+                    horizontal-alignment: center;
+                    text: card_uid;
+                    font-size: 50px;
+                    color: blue;
                 }
             }
 
