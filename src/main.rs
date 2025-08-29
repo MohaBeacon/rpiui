@@ -1,129 +1,111 @@
-// Prevent console window in addition to Slint window in Windows release builds when, e.g., starting the app via file manager. Ignored on other platforms.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
+use slint::SharedString;
 
 slint::include_modules!();
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
-    ui.run()?;
-    println!("TokenFlow ACR122U Test");
-    println!("----------------------");
-    
-    // Initialize PC/SC context
-    let ctx = Context::establish(Scope::User)?;
-    
-    // Get available readers
-    let mut readers_buffer = [0; 2048]; // Buffer for reader names
-    let readers = ctx.list_readers(&mut readers_buffer)?;
-    
-    // Check if any readers are found
-    let mut found_reader = false;
-    let mut acr122u = None;
-    
-    // Loop through readers to find ACR122U
-    for reader in readers {
-        let reader_name = reader.to_string_lossy();
-        println!("Found reader: {}", reader_name);
-        
-        if reader_name.contains("ACR122") {
-            acr122u = Some(reader);
-            found_reader = true;
-            println!("Selected ACR122U reader");
-            break;
+
+    // Clone a handle for UI updates
+    let ui_handle = ui.as_weak();
+
+    // Spawn background thread for NFC scanning
+    thread::spawn(move || {
+        // Initialize PC/SC context
+        let ctx = match Context::establish(Scope::User) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Failed to establish context: {}", e);
+                return;
+            }
+        };
+
+        // Get available readers
+        let mut readers_buffer = [0; 2048];
+        let readers = match ctx.list_readers(&mut readers_buffer) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Failed to list readers: {}", e);
+                return;
+            }
+        };
+
+        let mut acr122u = None;
+        for reader in readers {
+            let reader_name = reader.to_string_lossy();
+            if reader_name.contains("ACR122") {
+                acr122u = Some(reader);
+                break;
+            }
         }
-    }
-    
-    if !found_reader {
-        println!("No ACR122U reader found!");
-        return Ok(());
-    }
-    
-    let acr122u = acr122u.unwrap();
-    
-    println!("Waiting for cards... (place card on reader and hold it steady)");
-    println!("Press Ctrl+C to quit");
-    
-    // Keep track of last detected UID to avoid repeats
-    let mut last_uid = String::new();
-    
-    // Main loop
-    loop {
-        // Try to connect to a card
-        match ctx.connect(acr122u, ShareMode::Shared, Protocols::ANY) {
-            Ok(card) => {
-                println!("Card detected! Attempting to read...");
-                
-                // Give the card a moment to stabilize
-                thread::sleep(Duration::from_millis(100));
-                
-                // APDU command to get UID
-                let get_uid = [0xFF, 0xCA, 0x00, 0x00, 0x00];
-                
-                // Prepare receive buffer
-                let mut recv_buffer = [0; 256];
-                
-                // Transmit command
-                match card.transmit(&get_uid, &mut recv_buffer) {
-                    Ok(response) => {
-                        if response.len() >= 2 {
-                            // Check for success (ends with 9000)
-                            if response[response.len()-2] == 0x90 && response[response.len()-1] == 0x00 {
-                                // Extract UID (excluding status bytes)
-                                let uid = &response[0..response.len()-2];
-                                
-                                // Format UID as hex
+
+        let acr122u = match acr122u {
+            Some(r) => r,
+            None => {
+                eprintln!("No ACR122U reader found!");
+                return;
+            }
+        };
+
+        let mut last_uid = String::new();
+
+        loop {
+            match ctx.connect(acr122u, ShareMode::Shared, Protocols::ANY) {
+                Ok(card) => {
+                    thread::sleep(Duration::from_millis(100));
+
+                    let get_uid = [0xFF, 0xCA, 0x00, 0x00, 0x00];
+                    let mut recv_buffer = [0; 256];
+
+                    match card.transmit(&get_uid, &mut recv_buffer) {
+                        Ok(response) => {
+                            if response.len() >= 2
+                                && response[response.len() - 2] == 0x90
+                                && response[response.len() - 1] == 0x00
+                            {
+                                let uid = &response[..response.len() - 2];
                                 let uid_str = uid.iter()
                                     .map(|b| format!("{:02X}", b))
                                     .collect::<Vec<String>>()
                                     .join("");
-                                    
-                                // Only print if UID is different from last one
+
                                 if uid_str != last_uid {
-                                    println!("Card UID: {}", uid_str);
-                                    println!("Token ID: ACR122-{}", uid_str);
-                                    last_uid = uid_str;
+                                    last_uid = uid_str.clone();
+
+                                    if let Some(ui) = ui_handle.upgrade() {
+                                        // Update a label in UI
+                                        ui.set_card_uid(SharedString::from(uid_str.clone()));
+                                    }
                                 }
-                            } else {
-                                println!("Error reading card. Status bytes: {:02X} {:02X}", 
-                                         response[response.len()-2], 
-                                         response[response.len()-1]);
                             }
-                        } else {
-                            println!("Invalid response length: {}", response.len());
                         }
-                    },
-                    Err(e) => println!("Transmit error: {}", e),
+                        Err(e) => eprintln!("Transmit error: {}", e),
+                    }
+
+                    let _ = card.disconnect(pcsc::Disposition::LeaveCard);
+                    thread::sleep(Duration::from_millis(500));
                 }
-                
-                // Disconnect from the card properly
-                match card.disconnect(pcsc::Disposition::LeaveCard) {
-                    Ok(_) => {},
-                    Err((_, e)) => println!("Disconnect error: {:?}", e),
+                Err(Error::NoSmartcard) => {
+                    if !last_uid.is_empty() {
+                        if let Some(ui) = ui_handle.upgrade() {
+                            ui.set_card_uid(SharedString::from("Card removed"));
+                        }
+                        last_uid.clear();
+                    }
+                    thread::sleep(Duration::from_millis(200));
                 }
-                
-                // Wait a bit before trying again
-                thread::sleep(Duration::from_millis(500));
-            },
-            Err(Error::NoSmartcard) => {
-                // No card present, just wait
-                thread::sleep(Duration::from_millis(200));
-                // Clear last UID when card is removed
-                if !last_uid.is_empty() {
-                    println!("Card removed");
-                    last_uid.clear();
+                Err(e) => {
+                    eprintln!("Connect error: {}", e);
+                    thread::sleep(Duration::from_millis(500));
                 }
-            },
-            Err(e) => {
-                // Only print error if it's not what we've seen before
-                if !e.to_string().contains("Power has been removed") {
-                    println!("Connect error: {}", e);
-                }
-                thread::sleep(Duration::from_millis(500));
             }
         }
-    }
+    });
+
+    ui.run()?;
+    Ok(())
 }
