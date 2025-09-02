@@ -1,16 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use reqwest::Client;
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use std::fs::File;
 use std::io::Write;
 use std::thread;
 use std::time::Duration;
-use tokio::time::sleep;
 use chrono::Local;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
-use slint::{SharedString, Weak};
+use slint::{SharedString, Weak, EventLoopError};
 use lazy_static::lazy_static;
 
 slint::include_modules!();
@@ -28,7 +27,7 @@ lazy_static! {
         scan_interval: Duration::from_millis(200),
         stabilize_delay: Duration::from_millis(100),
         reader_name: "ACR122".to_string(),
-        valid_uid_lengths: vec![4, 7, 10], // Common NFC UID lengths
+        valid_uid_lengths: vec![4, 7, 10],
     };
 }
 
@@ -49,6 +48,8 @@ enum AppError {
     InvalidInput(String),
     #[error("PCSC error: {0}")]
     Pcsc(#[from] pcsc::Error),
+    #[error("Event loop error: {0}")]
+    EventLoop(#[from] EventLoopError),
 }
 
 // Define the POST request payload for the get_by_slug endpoint
@@ -95,7 +96,7 @@ struct PostResponse {
 struct Guest {
     name: String,
     #[serde(flatten)]
-    other: serde_json::Value, // Capture other fields flexibly
+    other: serde_json::Value,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -107,7 +108,7 @@ struct GuestsPostResponse {
 #[derive(Deserialize, Serialize)]
 struct LoadScorePostResponse {
     #[serde(flatten)]
-    data: serde_json::Value, // Flexible to capture any response structure
+    data: serde_json::Value,
 }
 
 // Function to validate inputs
@@ -146,7 +147,7 @@ fn log_to_file(log_file: &mut File, label: &str, content: &str) -> Result<(), Ap
 }
 
 // Function for the get_by_slug POST request with retry logic
-async fn post_get_by_slug(
+fn post_get_by_slug(
     client: &Client,
     access_token: &str,
     slug: &str,
@@ -166,29 +167,28 @@ async fn post_get_by_slug(
             .post(post_url)
             .header("Content-Type", "application/json")
             .json(&payload)
-            .send()
-            .await;
+            .send();
 
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<PostResponse>().await?;
+                    let result = resp.json::<PostResponse>()?;
                     let pretty = serde_json::to_string_pretty(&result)?;
                     log_to_file(log_file, "POST Response (get_by_slug)", &pretty)?;
                     return Ok(result);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
-                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                         return Err(AppError::ApiError {
                             status: status.as_u16(),
                             message,
                         });
                     }
-                    sleep(Duration::from_secs(1 << attempt)).await;
+                    thread::sleep(Duration::from_secs(1 << attempt));
                 }
                 status => {
-                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                     return Err(AppError::ApiError {
                         status: status.as_u16(),
                         message,
@@ -199,7 +199,7 @@ async fn post_get_by_slug(
                 if attempt == max_retries {
                     return Err(AppError::from(e));
                 }
-                sleep(Duration::from_secs(1 << attempt)).await;
+                thread::sleep(Duration::from_secs(1 << attempt));
             }
         }
     }
@@ -210,7 +210,7 @@ async fn post_get_by_slug(
 }
 
 // Function for the visual GET request with retry logic
-async fn get_visual(
+fn get_visual(
     client: &Client,
     access_token: &str,
     event_id: i32,
@@ -226,29 +226,28 @@ async fn get_visual(
         let response = client
             .get(&get_url)
             .header("Authorization", format!("Bearer {}", access_token))
-            .send()
-            .await;
+            .send();
 
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<serde_json::Value>().await?;
+                    let result = resp.json::<serde_json::Value>()?;
                     let pretty = serde_json::to_string_pretty(&result)?;
                     log_to_file(log_file, "GET Response (visual)", &pretty)?;
                     return Ok(result);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
-                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                         return Err(AppError::ApiError {
                             status: status.as_u16(),
                             message,
                         });
                     }
-                    sleep(Duration::from_secs(1 << attempt)).await;
+                    thread::sleep(Duration::from_secs(1 << attempt));
                 }
                 status => {
-                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                     return Err(AppError::ApiError {
                         status: status.as_u16(),
                         message,
@@ -259,7 +258,7 @@ async fn get_visual(
                 if attempt == max_retries {
                     return Err(AppError::from(e));
                 }
-                sleep(Duration::from_secs(1 << attempt)).await;
+                thread::sleep(Duration::from_secs(1 << attempt));
             }
         }
     }
@@ -270,7 +269,7 @@ async fn get_visual(
 }
 
 // Function for the guests POST request with retry logic
-async fn post_guests(
+fn post_guests(
     client: &Client,
     access_token: &str,
     guest_tag: &str,
@@ -291,29 +290,28 @@ async fn post_guests(
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", access_token))
             .json(&payload)
-            .send()
-            .await;
+            .send();
 
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<GuestsPostResponse>().await?;
+                    let result = resp.json::<GuestsPostResponse>()?;
                     let pretty = serde_json::to_string_pretty(&result)?;
                     log_to_file(log_file, &format!("POST Response (guests) for tag {}", guest_tag), &pretty)?;
                     return Ok(result);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
-                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                         return Err(AppError::ApiError {
                             status: status.as_u16(),
                             message,
                         });
                     }
-                    sleep(Duration::from_secs(1 << attempt)).await;
+                    thread::sleep(Duration::from_secs(1 << attempt));
                 }
                 status => {
-                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                     return Err(AppError::ApiError {
                         status: status.as_u16(),
                         message,
@@ -324,7 +322,7 @@ async fn post_guests(
                 if attempt == max_retries {
                     return Err(AppError::from(e));
                 }
-                sleep(Duration::from_secs(1 << attempt)).await;
+                thread::sleep(Duration::from_secs(1 << attempt));
             }
         }
     }
@@ -335,7 +333,7 @@ async fn post_guests(
 }
 
 // Function for the load_score POST request with retry logic
-async fn post_load_score(
+fn post_load_score(
     client: &Client,
     access_token: &str,
     checkpoint_id: i32,
@@ -360,19 +358,18 @@ async fn post_load_score(
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", access_token))
             .json(&payload)
-            .send()
-            .await;
+            .send();
 
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<LoadScorePostResponse>().await?;
+                    let result = resp.json::<LoadScorePostResponse>()?;
                     let pretty = serde_json::to_string_pretty(&result)?;
                     log_to_file(log_file, &format!("POST Response (load_score) for tag {}", guest_tag), &pretty)?;
                     return Ok(result);
                 }
                 reqwest::StatusCode::CONFLICT => {
-                    let message = resp.text().await.unwrap_or_else(|_| "Score already loaded".to_string());
+                    let message = resp.text().unwrap_or_else(|_| "Score already loaded".to_string());
                     log_to_file(log_file, &format!("Score already loaded for tag {}", guest_tag), &message)?;
                     return Ok(LoadScorePostResponse {
                         data: serde_json::json!({ "message": "Score already loaded" }),
@@ -380,16 +377,16 @@ async fn post_load_score(
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
-                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                         return Err(AppError::ApiError {
                             status: status.as_u16(),
                             message,
                         });
                     }
-                    sleep(Duration::from_secs(1 << attempt)).await;
+                    thread::sleep(Duration::from_secs(1 << attempt));
                 }
                 status => {
-                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    let message = resp.text().unwrap_or_else(|_| "Unknown error".to_string());
                     return Err(AppError::ApiError {
                         status: status.as_u16(),
                         message,
@@ -400,7 +397,7 @@ async fn post_load_score(
                 if attempt == max_retries {
                     return Err(AppError::from(e));
                 }
-                sleep(Duration::from_secs(1 << attempt)).await;
+                thread::sleep(Duration::from_secs(1 << attempt));
             }
         }
     }
@@ -411,7 +408,7 @@ async fn post_load_score(
 }
 
 // Function to handle multiple guest tags for guests and load_score
-async fn post_multiple_guests_and_scores(
+fn post_multiple_guests_and_scores(
     client: &Client,
     access_token: &str,
     guest_tags: &[String],
@@ -429,22 +426,20 @@ async fn post_multiple_guests_and_scores(
     for guest_tag in guest_tags {
         log_to_file(log_file, "Processing guest_tag", guest_tag)?;
 
-        // Call guests endpoint
-        let guests_response = post_guests(client, access_token, guest_tag, max_retries, log_file).await?;
-        // Extract username from guests response
+        let guests_response = post_guests(client, access_token, guest_tag, max_retries, log_file)?;
         let username = guests_response.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
         if !username.is_empty() {
             let weak = ui_handle.clone();
             let username = SharedString::from(username);
-            slint::invoke_from_event_loop(move || {
+            slint::invoke_from_event_loop(move || -> Result<(), AppError> {
                 if let Some(ui) = weak.upgrade() {
                     ui.set_user_name(username);
                 }
+                Ok(())
             })?;
         }
         guests_responses.push(guests_response);
 
-        // Call load_score endpoint
         let load_score_response = post_load_score(
             client,
             access_token,
@@ -453,8 +448,7 @@ async fn post_multiple_guests_and_scores(
             score,
             max_retries,
             log_file,
-        )
-        .await?;
+        )?;
         load_score_responses.push(load_score_response);
     }
 
@@ -462,18 +456,19 @@ async fn post_multiple_guests_and_scores(
 }
 
 // Helper function to show errors in UI
-fn show_error(ui_handle: &Weak<AppWindow>, message: &str) {
+fn show_error(ui_handle: &Weak<AppWindow>, message: &str) -> Result<(), AppError> {
     let weak = ui_handle.clone();
     let msg = message.to_string();
-    slint::invoke_from_event_loop(move || {
+    slint::invoke_from_event_loop(move || -> Result<(), AppError> {
         if let Some(ui) = weak.upgrade() {
             ui.set_card_uid(SharedString::from(format!("Error: {}", msg)));
         }
-    }).unwrap();
+        Ok(())
+    })?;
+    Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize Slint UI
     let ui = AppWindow::new()?;
     let ui_handle = ui.as_weak();
@@ -492,129 +487,117 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set up UI callback to handle score submission
     let ui_handle_clone = ui_handle.clone();
-    ui.global::<TriviaScreen>().on_submit_score(move |score| {
-        let ui_handle = ui_handle_clone.clone();
+    ui.global::<TriviaScreen>().on_submit_score({
         let access_token = access_token.clone();
         let slug = slug.clone();
-        let score = score.to_string();
         let client = client.clone();
-        let mut log_file = File::create(format!("api_log_{}.txt", Local::now().format("%Y%m%d_%H%M%S"))).unwrap();
+        move |score| {
+            let ui_handle = ui_handle_clone.clone();
+            let access_token = access_token.clone();
+            let slug = slug.clone();
+            let score = score.to_string();
+            let client = client.clone();
+            let mut log_file = File::create(format!("api_log_{}.txt", Local::now().format("%Y%m%d_%H%M%S"))).unwrap();
 
-        // Spawn async task to handle API calls
-        slint::spawn_local(async move {
-            // Get guest_tag from UI (card_uid)
-            let guest_tag = if let Some(ui) = ui_handle.upgrade() {
-                let card_uid = ui.get_card_uid();
-                if card_uid.starts_with("Card UID: ") {
-                    card_uid[9..].to_string()
+            slint::invoke_from_event_loop(move || -> Result<(), AppError> {
+                let guest_tag = if let Some(ui) = ui_handle.upgrade() {
+                    let card_uid = ui.get_card_uid();
+                    if card_uid.starts_with("Card UID: ") {
+                        card_uid[9..].to_string()
+                    } else {
+                        String::new()
+                    }
                 } else {
                     String::new()
+                };
+
+                if guest_tag.is_empty() {
+                    show_error(&ui_handle, "No valid card UID detected")?;
+                    return Ok(());
                 }
-            } else {
-                String::new()
-            };
 
-            if guest_tag.is_empty() {
-                show_error(&ui_handle, "No valid card UID detected");
-                return;
-            }
+                let guest_tags = vec![guest_tag];
 
-            let guest_tags = vec![guest_tag];
-
-            // Validate inputs
-            if let Err(e) = validate_inputs(&access_token, &slug, &guest_tags, &score) {
-                show_error(&ui_handle, &e.to_string());
-                return;
-            }
-
-            // Step 1: Make the get_by_slug POST request
-            let post_response = match post_get_by_slug(&client, &access_token, &slug, 3, &mut log_file).await {
-                Ok(resp) => resp,
-                Err(e) => {
-                    show_error(&ui_handle, &e.to_string());
-                    return;
+                if let Err(e) = validate_inputs(&access_token, &slug, &guest_tags, &score) {
+                    show_error(&ui_handle, &e.to_string())?;
+                    return Ok(());
                 }
-            };
-            log_to_file(&mut log_file, "Checkpoint ID", &post_response.checkpoint.id.to_string())?;
 
-            // Step 2: Extract event_id and checkpoint_id
-            let event_id = post_response.checkpoint.event_id;
-            let checkpoint_id = post_response.checkpoint.id;
+                let post_response = match post_get_by_slug(&client, &access_token, &slug, 3, &mut log_file) {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        show_error(&ui_handle, &e.to_string())?;
+                        return Ok(());
+                    }
+                };
+                log_to_file(&mut log_file, "Checkpoint ID", &post_response.checkpoint.id.to_string())?;
 
-            // Step 3: Make the visual GET request
-            if let Err(e) = get_visual(&client, &access_token, event_id, 3, &mut log_file).await {
-                show_error(&ui_handle, &e.to_string());
-                return;
-            }
+                let event_id = post_response.checkpoint.event_id;
+                let checkpoint_id = post_response.checkpoint.id;
 
-            // Step 4: Make the guests and load_score POST requests
-            if let Err(e) = post_multiple_guests_and_scores(
-                &client,
-                &access_token,
-                &guest_tags,
-                checkpoint_id,
-                &score,
-                3,
-                &mut log_file,
-                ui_handle.clone(),
-            )
-            .await
-            {
-                show_error(&ui_handle, &e.to_string());
-                return;
-            }
+                if let Err(e) = get_visual(&client, &access_token, event_id, 3, &mut log_file) {
+                    show_error(&ui_handle, &e.to_string())?;
+                    return Ok(());
+                }
 
-            // Notify success and reset quiz state
-            slint::invoke_from_event_loop(move || {
+                if let Err(e) = post_multiple_guests_and_scores(
+                    &client,
+                    &access_token,
+                    &guest_tags,
+                    checkpoint_id,
+                    &score,
+                    3,
+                    &mut log_file,
+                    ui_handle.clone(),
+                ) {
+                    show_error(&ui_handle, &e.to_string())?;
+                    return Ok(());
+                }
+
                 if let Some(ui) = ui_handle.upgrade() {
                     ui.set_card_uid(SharedString::from("Score submitted successfully"));
-                    // Reset TriviaScreen state
                     ui.global::<TriviaScreen>().set_score(0);
                     ui.global::<TriviaScreen>().set_current_question(0);
                     ui.global::<TriviaScreen>().set_answered(false);
                     ui.global::<TriviaScreen>().set_quiz_finished(false);
                     ui.set_current_screen(SharedString::from("welcome"));
                 }
-            }).unwrap();
-        })
-        .unwrap();
+                Ok(())
+            }).unwrap(); // Consider proper error handling in production
+        }
     });
 
     // Spawn NFC scanning thread
     thread::spawn(move || {
-        // Establish PC/SC context
         let ctx = match Context::establish(Scope::User) {
             Ok(c) => c,
             Err(e) => {
-                show_error(&ui_handle, &format!("Failed to establish PC/SC context: {}", e));
+                show_error(&ui_handle, &format!("Failed to establish PC/SC context: {}", e)).unwrap();
                 return;
             }
         };
 
-        // List available readers
         let mut readers_buffer = [0; 2048];
         let readers = match ctx.list_readers(&mut readers_buffer) {
             Ok(r) => r,
             Err(e) => {
-                show_error(&ui_handle, &format!("Failed to list readers: {}", e));
+                show_error(&ui_handle, &format!("Failed to list readers: {}", e)).unwrap();
                 return;
             }
         };
 
-        // Find ACR122U
         let acr122u = match readers.into_iter()
             .find(|r| r.to_string_lossy().contains(&CONFIG.reader_name))
         {
             Some(r) => r,
             None => {
-                show_error(&ui_handle, "No ACR122U reader found!");
+                show_error(&ui_handle, "No ACR122U reader found!").unwrap();
                 return;
             }
         };
 
         let mut last_uid = String::new();
 
-        // Main scanning loop
         loop {
             match ctx.connect(acr122u, ShareMode::Shared, Protocols::ANY) {
                 Ok(card) => {
@@ -640,15 +623,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     last_uid = uid_str.clone();
                                     let weak = ui_handle.clone();
                                     let msg = format!("Card UID: {}", uid_str);
-                                    slint::invoke_from_event_loop(move || {
+                                    slint::invoke_from_event_loop(move || -> Result<(), AppError> {
                                         if let Some(ui) = weak.upgrade() {
                                             ui.set_card_uid(SharedString::from(msg));
                                             ui.set_current_screen(SharedString::from("welcome"));
                                         }
+                                        Ok(())
                                     }).unwrap();
                                 }
                             } else {
-                                show_error(&ui_handle, &format!("Invalid UID length: {}", uid.len()));
+                                show_error(&ui_handle, &format!("Invalid UID length: {}", uid.len())).unwrap();
                             }
                         } else {
                             show_error(
@@ -658,10 +642,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     response[response.len() - 2],
                                     response[response.len() - 1]
                                 ),
-                            );
+                            ).unwrap();
                         }
                     } else {
-                        show_error(&ui_handle, "Failed to read card");
+                        show_error(&ui_handle, "Failed to read card").unwrap();
                     }
 
                     let _ = card.disconnect(pcsc::Disposition::LeaveCard);
@@ -671,23 +655,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !last_uid.is_empty() {
                         last_uid.clear();
                         let weak = ui_handle.clone();
-                        slint::invoke_from_event_loop(move || {
+                        slint::invoke_from_event_loop(move || -> Result<(), AppError> {
                             if let Some(ui) = weak.upgrade() {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
                                 ui.set_user_name(SharedString::from(""));
                                 ui.set_current_screen(SharedString::from("preintro"));
-                                // Reset TriviaScreen state
                                 ui.global::<TriviaScreen>().set_score(0);
                                 ui.global::<TriviaScreen>().set_current_question(0);
                                 ui.global::<TriviaScreen>().set_answered(false);
                                 ui.global::<TriviaScreen>().set_quiz_finished(false);
                             }
+                            Ok(())
                         }).unwrap();
                     }
                     thread::sleep(CONFIG.scan_interval);
                 }
                 Err(e) => {
-                    show_error(&ui_handle, &format!("Connect error: {}", e));
+                    show_error(&ui_handle, &format!("Connect error: {}", e)).unwrap();
                     thread::sleep(Duration::from_millis(500));
                 }
             }
