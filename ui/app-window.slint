@@ -38,7 +38,7 @@ component TriviaScreen inherits VerticalBox {
     in property <[string]> questions;
     in property <[[string]]> answers;
     in property <[int]> correct_answers;
-    in property <string> trivia-name;
+    in-out property <string> trivia-name;
     callback return-to-start;
     callback submit_score(int); // New callback to submit score
 

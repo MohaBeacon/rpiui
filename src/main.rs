@@ -530,7 +530,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or_else(|e| eprintln!("Log error: {}", e));
 
                 let event_id = post_response.checkpoint.event_id;
-                let checkpoint_id = post_response.checkpoint.id;
+
+                let trivia_name = ui.get_trivia_name();
+                let mut checkpoint_id = "0".to_string();
+                if trivia_name == "TRIVIA 1"{
+                    checkpoint_id = "62".to_string();
+                }
+                if trivia_name == "TRIVIA 2"{
+                    checkpoint_id = "63".to_string();
+                }
 
                 if let Err(e) = get_visual(&client, &access_token, event_id, 3, &mut log_file) {
                     show_error(&ui_handle, &e.to_string());
