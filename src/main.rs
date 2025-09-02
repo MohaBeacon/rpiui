@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         slint::invoke_from_event_loop(move || {
                             if let Some(ui) = weak.upgrade() {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
-                                ui.set_current_screen(SharedString::from("preintro")); // Return to preintro when card is removed
+                                // Return to preintro when card is removed
                             }
                         }).unwrap();
                     }
