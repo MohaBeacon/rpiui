@@ -38,7 +38,7 @@ component TriviaScreen inherits VerticalBox {
     in property <[string]> questions;
     in property <[[string]]> answers;
     in property <[int]> correct_answers;
-    in-out property <string> trivia-name;
+    in-out property <string> trivia_name;
     callback return-to-start;
     callback submit_score(int); // New callback to submit score
 
@@ -163,6 +163,8 @@ export component AppWindow inherits Window {
     in-out property <string> card_uid: "Waiting for card...";
     in-out property <string> user_name: "";
     in-out property <string> current_screen: "preintro";
+    in-out property <string> trivia_name: "";
+
     callback submit_score(int);
 
     
@@ -341,7 +343,7 @@ export component AppWindow inherits Window {
                 }
 
                 if current_screen == "trivia1": TriviaScreen {
-                    trivia-name: "TRIVIA 1";
+                    trivia_name: "TRIVIA 1";
                     questions: [
                         "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
                         "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
@@ -361,7 +363,7 @@ export component AppWindow inherits Window {
                 }
 
                 if current_screen == "trivia2": TriviaScreen {
-                    trivia-name: "TRIVIA 2";
+                    trivia_name: "TRIVIA 2";
                     questions: [
                         "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
                         "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",

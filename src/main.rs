@@ -411,7 +411,7 @@ fn post_multiple_guests_and_scores(
     client: &Client,
     access_token: &str,
     guest_tags: &[String],
-    checkpoint_id: i32,
+    checkpoint_id: &str,
     score: &str,
     max_retries: u32,
     log_file: &mut File,
