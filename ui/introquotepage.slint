@@ -6,6 +6,7 @@ component AppButton inherits Rectangle {
     in property <bool> enabled: true;
     in property <color> text-color: white;
     in property <int> font-weight: 400;
+    in-out property <string> current_screen;
     background: #FF3900; // Default to orange
     callback clicked;
     border-radius: 30px;
