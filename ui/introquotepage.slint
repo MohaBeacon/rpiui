@@ -6,7 +6,6 @@ component AppButton inherits Rectangle {
     in property <bool> enabled: true;
     in property <color> text-color: white;
     in property <int> font-weight: 400;
-    in-out property <string> current_screen;
     background: #FF3900; // Default to orange
     callback clicked;
     border-radius: 30px;
@@ -158,7 +157,7 @@ export component AppWindow inherits Window {
     height: 1000px;
     in-out property <string> card_uid: "Waiting for card...";
     in-out property <string> user-name: "John";
-    property <string> current_screen: "preintro";
+    in-out property <string> current_screen: "preintro";
 
     Rectangle {
         width: 1200px;
