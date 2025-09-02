@@ -650,7 +650,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             if let Some(ui) = weak.upgrade() {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
                                 ui.set_user_name(SharedString::from(""));
-                                ui.set_current_screen(SharedString::from("preintro"));
+                                
                             }
                         }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                     }
