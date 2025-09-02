@@ -36,8 +36,6 @@ fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
     }).unwrap();
 }
 
-
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize Slint UI
     let ui = AppWindow::new()?;
@@ -106,6 +104,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     slint::invoke_from_event_loop(move || {
                                         if let Some(ui) = weak.upgrade() {
                                             ui.set_card_uid(SharedString::from(msg));
+                                            ui.set_current_screen(SharedString::from("welcome")); // Move to welcome screen
+                                            // Optionally set user-name if you have a way to map UID to a name
+                                            // ui.set_user_name(SharedString::from("User"));
                                         }
                                     }).unwrap();
                                 }
@@ -132,6 +133,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(Error::NoSmartcard) => {
                     if !last_uid.is_empty() {
                         last_uid.clear();
+                        let weak = ui_handle.clone();
+                        slint::invoke_from_event_loop(move || {
+                            if let Some(ui) = weak.upgrade() {
+                                ui.set_card_uid(SharedString::from("Waiting for card..."));
+                                ui.set_current_screen(SharedString::from("preintro")); // Return to preintro when card is removed
+                            }
+                        }).unwrap();
                     }
                     thread::sleep(CONFIG.scan_interval);
                 }
