@@ -549,7 +549,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &client,
                     &access_token,
                     &guest_tags,
-                    checkpoint_id,
+                    &checkpoint_id,
                     &score,
                     3,
                     &mut log_file,
