@@ -1,62 +1,242 @@
 import { AboutSlint, Button, VerticalBox } from "std-widgets.slint";
 
+// Reusable button component
+component AppButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <color> text-color: white;
+    in property <int> font-weight: 400;
+    background: #FF3900; // Default to orange
+    callback clicked;
+    border-radius: 30px;
+    border-width: 1px;
+    border-color: transparent;
+    min-height: 40px;
+
+    Text {
+        text: root.text;
+        font-size: 36px;
+        color: root.text-color;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        wrap: word-wrap;
+        width: 100%;
+        font-family: "Montserrat";
+        font-weight: root.font-weight;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// TriviaScreen component
+component TriviaScreen inherits VerticalBox {
+    in property <[string]> questions;
+    in property <[[string]]> answers;
+    in property <[int]> correct_answers;
+    in property <string> trivia-name;
+    callback return-to-start;
+
+    alignment: center;
+    property <int> score: 0;
+    property <bool> answered: false;
+    property <int> current_question: 0;
+    property <bool> quiz_finished: false;
+
+    if !quiz_finished: VerticalBox {
+        spacing: 10px;
+        alignment: center;
+        Text {
+            text: questions[current_question];
+            font-size: 40px;
+            font-weight: 800;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            width: 100%;
+            font-family: "Montserrat";
+            color: white;
+        }
+        for answer[idx] in answers[current_question] : AppButton {
+            text: answer;
+            enabled: !answered;
+            width: 80%;
+            min-height: 60px;
+            font-weight: 100;
+            text-color: white;
+            background: black;
+            x: (parent.width - self.width) / 2;
+            clicked => {
+                if (idx == correct_answers[current_question]) {
+                    score += 5;
+                }
+                answered = true;
+                if (current_question < questions.length - 1) {
+                    current_question += 1;
+                    answered = false;
+                } else {
+                    quiz_finished = true;
+                }
+            }
+        }
+    }
+
+    if quiz_finished: VerticalBox {
+        spacing: 10px;
+        padding: 10px;
+        alignment: center;
+        Text {
+            text: "\{score/5} CORRECT ANSWERS";
+            font-size: 40px;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            width: 50%;
+            font-weight: 800;
+        }
+        Text {
+            text: "YOU SCORED";
+            color: white;
+            font-size: 30px;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            width: 50%;
+            font-weight: 800;
+        }
+        Text {
+            text: "\{score}";
+            color: white;
+            font-size: 60px;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            width: 50%;
+            font-weight: 700;
+        }
+        Text {
+            text: "POINTS";
+            color: white;
+            font-size: 30px;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            width: 50%;
+            font-weight: 800;
+        }
+        Rectangle {
+            Text {
+                text: "¡THANK YOU FOR PARTICIPATING!";
+                font-size: 40px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+                width: 50%;
+                font-weight: 800;
+            }
+        }
+        AppButton {
+            text: "RETURN TO START";
+            width: 80%;
+            min-height: 60px;
+            background: transparent;
+            text-color: black;
+            x: (parent.width - self.width) / 2;
+            clicked => {
+                score = 0;
+                current_question = 0;
+                answered = false;
+                quiz_finished = false;
+                root.return-to-start();
+            }
+        }
+    }
+}
 
 export component AppWindow inherits Window {
-  
-    in property <string> card_uid: "Waiting for card...";
     no-frame: true;
     width: 1200px;
-    height: 800px;
+    height: 1000px;
+    in-out property <string> card_uid: "Waiting for card...";
+    in-out property <string> user-name: "John";
+    in-out property <string> current_screen: "preintro";
+
     Rectangle {
         width: 1200px;
-        height: 800px;
+        height: 1000px;
         background: #FF3900;
 
-        VerticalLayout {
-            y: 100px;
-            spacing: 20px;
+        // Preintro page
+        if current_screen == "preintro": VerticalLayout {
+            width: 1200px;
+            height: 800px;
+            spacing: 15px;
+            padding: 20px;
+            alignment: center;
+
             Rectangle {
-                 Image {
+                width: parent.width; // 1200px
+                height: 200px;
+                background: #FF3900;
+                Image {
                     source: @image-url("../assets/logo-allhands.png");
+                    width: 800px;
+                    height: 200px;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
                 }
             }
 
             Rectangle {
+                width: parent.width;
+                height: 150px;
+                background: #FF3900;
                 Text {
-                    font-size: 73.4px;
+                    font-size: 40px;
                     horizontal-alignment: center;
+                    vertical-alignment: center;
                     text: "THINK YOU’VE GOT WHAT IT TAKES TO BE A BETWARRIOR EXPERT?";
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
-                    font-family: "Montaserrat";
+                    x: (parent.width - self.width) / 2;
+                    font-family: "Montserrat";
                     font-weight: 800;
                 }
-                
             }
+
             Rectangle {
+                width: parent.width;
+                height: 100px;
+                background: #FF3900;
                 Text {
-                    font-size: 73.4px;
+                    font-size: 40px;
                     horizontal-alignment: center;
+                    vertical-alignment: center;
                     text: "SCAN YOUR WRISTBAND TO START!";
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
-                    font-family: "Montaserrat";
+                    x: (parent.width - self.width) / 2;
+                    font-family: "Montserrat";
                     font-weight: 800;
                 }
             }
-            Rectangle {
-                 Text {
-                    horizontal-alignment: center;
-                    text: card_uid;
-                    font-size: 50px;
-                    color: blue;
-                }
-            }
-           
 
             Rectangle {
+                width: parent.width;
+                height: 50px;
+                background: #FF3900;
+                Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    text: card_uid;
+                    font-size: 40px;
+                    color: white;
+                    font-family: "Montserrat";
+                    font-weight: 400;
+                }
+            }
+
+           Rectangle {
                  Path {
                     width: 180px;
                     height: 150px;
@@ -67,14 +247,129 @@ export component AppWindow inherits Window {
                     stroke-line-cap: round;
                 }
             }
-
-
         }
-       
-       
-    
-    }
-    
-    }
 
-       
+        // Main app (welcome and trivia screens)
+        if current_screen != "preintro": VerticalLayout {
+            width: 1200px;
+            height: 800px;
+            spacing: 15px;
+            padding: 20px;
+            alignment: center;
+
+            Rectangle {
+                width: parent.width;
+                height: 200px;
+                background: #FF3900;
+                Image {
+                    source: @image-url("../assets/logo-allhands.png");
+                    width: 800px;
+                    height: 200px;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+
+            Rectangle {
+                width: parent.width;
+                height: 100px;
+                background: #FF3900;
+                Text {
+                    text: current_screen == "welcome" ? "WELCOME \{user-name}" :
+                          current_screen == "trivia1" ? "TRIVIA 1" :
+                          "TRIVIA 2";
+                    font-size: 50px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    color: black;
+                    wrap: word-wrap;
+                    width: 80%;
+                    x: (parent.width - self.width) / 2;
+                    font-family: "Montserrat";
+                    font-weight: 800;
+                }
+            }
+
+            Rectangle {
+                width: parent.width;
+                height: 460px;
+                background: #FF3900;
+
+                if current_screen == "welcome": VerticalBox {
+                    spacing: 15px;
+                    padding: 20px;
+                    alignment: center;
+                    HorizontalLayout {
+                        alignment: center;
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 15px;
+                            AppButton {
+                                text: "TRIVIA 1";
+                                width: 300px;
+                                height: 80px;
+                                font-weight: 400;
+                                background: black;
+                                text-color: white;
+                                x: (parent.width - self.width) / 2;
+                                clicked => {
+                                    current_screen = "trivia1";
+                                }
+                            }
+                            AppButton {
+                                text: "TRIVIA 2";
+                                width: 300px;
+                                height: 80px;
+                                font-weight: 400;
+                                background: black;
+                                text-color: white;
+                                x: (parent.width - self.width) / 2;
+                                clicked => {
+                                    current_screen = "trivia2";
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if current_screen == "trivia1": TriviaScreen {
+                    trivia-name: "TRIVIA 1";
+                    questions: [
+                        "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
+                        "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
+                        "3. Matador (Mario Kempes) ¿Por qué es recordado Mario “el Matador” Kempes en la historia del fútbol argentino?",
+                        "4. Willy (Guillermo Vilas) ¿Qué logro histórico consiguió Guillermo “Willy” Vilas en el tenis?",
+                        "5. Pelusa (Diego Maradona) ¿Por qué le decían “Pelusa” a Diego Maradona?"
+                    ];
+                    answers: [
+                        ["a) Fue la primera argentina en ganar un Mundial de Hockey sobre Césped", "b) Fue elegida ocho veces la mejor jugadora del mundo por la FIH", "c) Ganó dos medallas de oro olímpicas"],
+                        ["a) Fue el primer argentino en ser campeón de la NBA", "b) Fue el jugador más alto de los San Antonio Spurs", "c) Fue entrenador asistente antes de retirarse"],
+                        ["a) Fue goleador y figura en el Mundial de 1978", "b) Fue el primer argentino en jugar en el Real Madrid", "c) Ganó la Copa América en 1987"],
+                        ["a) Ganó 4 torneos de Grand Slam", "b) Fue número 1 del ranking ATP durante dos años consecutivos", "c) Fue capitán de Copa Davis durante 20 años"],
+                        ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
+                    ];
+                    correct_answers: [1, 0, 0, 0, 1];
+                    return-to-start => { current_screen = "welcome"; }
+                }
+
+                if current_screen == "trivia2": TriviaScreen {
+                    trivia-name: "TRIVIA 2";
+                    questions: [
+                        "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
+                        "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",
+                        "3. Maracaná ¿Qué acontecimiento deportivo marcó al Estadio Maracaná en 1950?",
+                        "4. Las Vegas ¿Qué particularidad hace famosa a Las Vegas en el deporte y el entretenimiento?"
+                    ];
+                    answers: [
+                        ["a) Muhammad Ali peleó contra Joe Frazier en “La Pelea del Siglo” (1971)", "b) Fue sede de la final del Mundial de Fútbol 1994", "c) Allí se disputó el primer Super Bowl"],
+                        ["a) Es el único Grand Slam que se juega sobre césped", "b) Es el torneo más antiguo de tenis en Sudamérica", "c) Fue el primer torneo en permitir raquetas de grafito"],
+                        ["a) La final del Mundial donde Brasil perdió con Uruguay, conocida como el “Maracanazo”", "b) La primera final de Copa Libertadores entre Boca y River", "c) El debut internacional de Pelé"],
+                        ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
+                    ];
+                    correct_answers: [0, 0, 0, 1];
+                    return-to-start => { current_screen = "welcome"; }
+                }
+            }
+        }
+    }
+}
