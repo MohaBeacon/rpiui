@@ -1,0 +1,395 @@
+import { AboutSlint, Button, VerticalBox } from "std-widgets.slint";
+
+component CustomButton inherits Rectangle {
+    in property <string> text; // Text to display
+    in property <bool> enabled: true; // Enabled state
+    callback clicked; // Click event
+    border-radius: 30px;
+    background: black; // Consistent background
+    border-width: 1px;
+    min-height: 40px; // Minimum height to accommodate text
+
+    Text {
+        text: root.text;
+        font-size: 36px;
+        color: white; // Consistent text color
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        wrap: word-wrap;
+        width: 100%;
+        font-family: "Bebas Neue";
+        font-weight: 400;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component ReturnButton inherits Rectangle {
+    in property <string> text; // Text to display
+    in property <bool> enabled: true; // Enabled state
+    callback clicked; // Click event
+    border-radius: 30px;
+    background: black; // Consistent background
+    border-width: 1px;
+    min-height: 40px; // Minimum height to accommodate text
+
+    Text {
+        text: root.text;
+        font-size: 36px;
+        color: black; // Consistent text color
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        wrap: word-wrap;
+        width: 100%;
+        font-family: "Bebas Neue";
+        font-weight: 400;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+
+
+export component Intropage inherits Window {
+    no-frame: true;
+    width: 1200px;
+    height: 1000px;
+    property <string> current_screen: "welcome"; // Tracks current screen
+
+    // Base layout to ensure consistent positioning
+    VerticalLayout {
+
+        width: 1200px;
+        height: 1000px;
+        alignment: center;
+
+        // Logo container (consistent across all screens)
+        Rectangle {
+            height: 300px;
+            width: parent.width;
+            background: #FF3900;
+
+            Image {
+                source: @image-url("../assets/logo-allhands.png");
+                width: 800px; // Fixed size for consistency
+                height: 200px;
+                x: (parent.width - self.width) / 2; // Center horizontally
+                y: (parent.height - self.height) / 2; // Center vertically
+            }
+        }
+
+        // Title container
+        Rectangle {
+            height: 100px;
+            width: parent.width;
+            background: #FF3900;
+
+            Text {
+                text: current_screen == "welcome" ? "WELCOME JOHN" :
+                      current_screen == "trivia1" ? "TRIVIA 1" :
+                      "TRIVIA 2";
+                font-size: 50px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: black;
+                wrap: word-wrap;
+                width: 50%;
+                x: (parent.width - self.width) / 2; // Center horizontally
+                font-family: "Bebas Neue";
+                font-weight: 800;
+            }
+        }
+
+        // Content area (buttons or quiz content)
+        Rectangle {
+            width: parent.width;
+            height: 600px; // Fixed height for content area
+            background: #FF3900;
+
+            // Welcome screen
+            if current_screen == "welcome": VerticalBox {
+                spacing: 10px;
+                padding: 20px;
+                alignment: center;
+
+                HorizontalLayout {
+                    alignment: center;
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 10px;
+                        CustomButton {
+                            text: "TRIVIA 1";
+                            width: 300px;
+                            height: 100px;
+                            clicked => {
+                                current_screen = "trivia1";
+                            }
+                        }
+                        CustomButton {
+                            text: "TRIVIA 2";
+                            width: 300px;
+                            height: 100px;
+                            clicked => {
+                                current_screen = "trivia2";
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Trivia 1 screen
+            if current_screen == "trivia1": VerticalBox {
+                spacing: 10px;
+                padding: 20px;
+                property <int> score: 0;
+                property <bool> answered: false;
+                property <int> current_question: 0;
+                property <bool> quiz_finished: false;
+
+                property <[string]> questions: [
+                    "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
+                    "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
+                    "3. Matador (Mario Kempes) ¿Por qué es recordado Mario “el Matador” Kempes en la historia del fútbol argentino?",
+                    "4. Willy (Guillermo Vilas) ¿Qué logro histórico consiguió Guillermo “Willy” Vilas en el tenis?",
+                    "5. Pelusa (Diego Maradona) ¿Por qué le decían “Pelusa” a Diego Maradona?"
+                ];
+
+                property <[[string]]> answers: [
+                    ["a) Fue la primera argentina en ganar un Mundial de Hockey sobre Césped", "b) Fue elegida ocho veces la mejor jugadora del mundo por la FIH", "c) Ganó dos medallas de oro olímpicas"],
+                    ["a) Fue el primer argentino en ser campeón de la NBA", "b) Fue el jugador más alto de los San Antonio Spurs", "c) Fue entrenador asistente antes de retirarse"],
+                    ["a) Fue goleador y figura en el Mundial de 1978", "b) Fue el primer argentino en jugar en el Real Madrid", "c) Ganó la Copa América en 1987"],
+                    ["a) Ganó 4 torneos de Grand Slam", "b) Fue número 1 del ranking ATP durante dos años consecutivos", "c) Fue capitán de Copa Davis durante 20 años"],
+                    ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
+                ];
+
+                property <[int]> correct_answers: [1, 0, 0, 0, 1];
+
+                if !quiz_finished: VerticalBox {
+                    spacing: 10px;
+                    Text {
+                        text: questions[current_question];
+                        font-size: 40px;
+                        font-weight: 800;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 100%;
+                        font-family: "Bebas Neue";
+                        color: white;
+                    }
+                    for answer[idx] in answers[current_question] : CustomButton {
+                        text: answer;
+                        enabled: !answered;
+                        width: 100%;
+                        min-height: 40px;
+                        clicked => {
+                            if (idx == correct_answers[current_question]) {
+                                score += 5;
+                            }
+                            answered = true;
+                            if (current_question < questions.length - 1) {
+                                current_question += 1;
+                                answered = false;
+                            } else {
+                                quiz_finished = true;
+                            }
+                        }
+                    }
+                }
+
+                if quiz_finished: VerticalBox {
+                    spacing: 10px;
+                    padding: 10px;
+                    Text {
+                        text: "\{score/5} CORRECT ANSWERS";
+                        font-size: 40px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "YOU SCORED";
+                        color: white;
+                        font-size: 30px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "\{score}";
+                        color: white;
+                        font-size: 60px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 1200;
+                    }
+                    Text {
+                        text: "POINTS";
+                        color: white;
+                        font-size: 30px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Rectangle {
+                        Text {
+                            text: "!THANK YOU FOR PARTICIPATING¡";
+                            font-size: 40px;
+                            horizontal-alignment: center;
+                            wrap: word-wrap;
+                            width: 50%;
+                            font-weight: 800;
+                        }
+                    }
+                    ReturnButton{
+                        text: "RETURN TO START";
+                        width: 100%;
+                        min-height: 40px;
+                        background: transparent;
+                        clicked => {
+                            score = 0;
+                            current_question = 0;
+                            answered = false;
+                            quiz_finished = false;
+                            current_screen = "welcome";
+                        }
+                    }
+                }
+            }
+
+            // Trivia 2 screen
+            if current_screen == "trivia2": VerticalBox {
+                spacing: 10px;
+                padding: 20px;
+                property <int> score: 0;
+                property <bool> answered: false;
+                property <int> current_question: 0;
+                property <bool> quiz_finished: false;
+
+                property <[string]> questions: [
+                    "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
+                    "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",
+                    "3. Maracaná ¿Qué acontecimiento deportivo marcó al Estadio Maracaná en 1950?",
+                    "4. Las Vegas ¿Qué particularidad hace famosa a Las Vegas en el deporte y el entretenimiento?"
+                ];
+
+                property <[[string]]> answers: [
+                    ["a) Muhammad Ali peleó contra Joe Frazier en “La Pelea del Siglo” (1971)", "b) Fue sede de la final del Mundial de Fútbol 1994", "c) Allí se disputó el primer Super Bowl"],
+                    ["a) Es el único Grand Slam que se juega sobre césped", "b) Es el torneo más antiguo de tenis en Sudamérica", "c) Fue el primer torneo en permitir raquetas de grafito"],
+                    ["a) La final del Mundial donde Brasil perdió con Uruguay, conocida como el “Maracanazo”", "b) La primera final de Copa Libertadores entre Boca y River", "c) El debut internacional de Pelé"],
+                    ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
+                ];
+
+                property <[int]> correct_answers: [0, 0, 0, 1];
+
+                if !quiz_finished: VerticalBox {
+                    spacing: 10px;
+                    Text {
+                        text: questions[current_question];
+                        font-size: 40px;
+                        font-weight: 800;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 100%;
+                        font-family: "Bebas Neue";
+                        color: white;
+                    }
+                    for answer[idx] in answers[current_question] : CustomButton {
+                        text: answer;
+                        enabled: !answered;
+                        width: 100%;
+                        min-height: 40px;
+                        clicked => {
+                            if (idx == correct_answers[current_question]) {
+                                score += 5;
+                            }
+                            answered = true;
+                            if (current_question < questions.length - 1) {
+                                current_question += 1;
+                                answered = false;
+                            } else {
+                                quiz_finished = true;
+                            }
+                        }
+                    }
+                }
+
+                if quiz_finished: VerticalBox {
+                    spacing: 10px;
+                    padding: 10px;
+                    Text {
+                        text: "\{score/5} CORRECT ANSWERS";
+                        font-size: 40px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "YOU SCORED";
+                        color: white;
+                        font-size: 30px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "\{score}";
+                        color: white;
+                        font-size: 60px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 1200;
+                    }
+                    Text {
+                        text: "POINTS";
+                        color: white;
+                        font-size: 30px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Rectangle {
+                        Text {
+                            text: "!THANK YOU FOR PARTICIPATING¡";
+                            font-size: 40px;
+                            horizontal-alignment: center;
+                            wrap: word-wrap;
+                            width: 50%;
+                            font-weight: 800;
+                        }
+                    }
+                    ReturnButton {
+                        text: "RETURN TO START";
+                        width: 100%;
+                        min-height: 40px;
+                        background: transparent;
+                        clicked => {
+                            score = 0;
+                            current_question = 0;
+                            answered = false;
+                            quiz_finished = false;
+                            current_screen = "welcome";
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,4 +1,5 @@
 import { AboutSlint, Button, VerticalBox } from "std-widgets.slint";
+import {Intropage }from "./introquotepage.slint";
 
 
 
@@ -35,9 +36,8 @@ component CustomButton inherits Rectangle {
 
    
 }
-export component AppWindow inherits Window {
+export component Trivia1 inherits Window {
   
-    in property <string> card_uid: "Waiting for card...";
     
     no-frame: true;
     width: 1200px;
@@ -191,26 +191,15 @@ export component AppWindow inherits Window {
                     answered = false;
                     feedback = "";
                     quiz_finished = false;
+                    Intropage
                 }
             }
         }
     }
 
 
-            
-            
-            
-
-            
-
-
         }
-       
-       
-    
     }
-    
-       
     }
 
        
