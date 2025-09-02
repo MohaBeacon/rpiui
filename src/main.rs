@@ -36,12 +36,7 @@ fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
     }).unwrap();
 }
 
-fn show_welcome_screen(card_uid: String) {
-    slint::invoke_from_event_loop(move || {
-        let welcome_ui = Intropage::new().expect("Failed to create IntroPage");
-        welcome_ui.show().expect("Failed to show IntroPage");
-    }).unwrap();
-}
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize Slint UI
