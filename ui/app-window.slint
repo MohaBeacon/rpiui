@@ -40,12 +40,20 @@ component TriviaScreen inherits VerticalBox {
     in property <[int]> correct_answers;
     in property <string> trivia-name;
     callback return-to-start;
+    callback submit_score(int); // New callback to submit score
 
     alignment: center;
-    property <int> score: 0;
-    property <bool> answered: false;
-    property <int> current_question: 0;
-    property <bool> quiz_finished: false;
+    in-out property <int> score: 0;
+    in-out property <bool> answered: false;
+    in-out property <int> current_question: 0;
+    in-out property <bool> quiz_finished: false;
+
+    // Automatically submit score when quiz is finished
+    function check-quiz-finished() {
+        if (quiz_finished) {
+            submit_score(score);
+        }
+    }
 
     if !quiz_finished: VerticalBox {
         spacing: 10px;
@@ -79,6 +87,7 @@ component TriviaScreen inherits VerticalBox {
                     answered = false;
                 } else {
                     quiz_finished = true;
+                    check-quiz-finished();
                 }
             }
         }
@@ -141,10 +150,6 @@ component TriviaScreen inherits VerticalBox {
             text-color: black;
             x: (parent.width - self.width) / 2;
             clicked => {
-                score = 0;
-                current_question = 0;
-                answered = false;
-                quiz_finished = false;
                 root.return-to-start();
             }
         }
@@ -156,7 +161,7 @@ export component AppWindow inherits Window {
     width: 1200px;
     height: 1000px;
     in-out property <string> card_uid: "Waiting for card...";
-    in-out property <string> user-name: "John";
+    in-out property <string> user_name: "";
     in-out property <string> current_screen: "preintro";
 
     Rectangle {
@@ -173,7 +178,7 @@ export component AppWindow inherits Window {
             alignment: center;
 
             Rectangle {
-                width: parent.width; // 1200px
+                width: parent.width;
                 height: 200px;
                 background: #FF3900;
                 Image {
@@ -236,8 +241,8 @@ export component AppWindow inherits Window {
                 }
             }
 
-           Rectangle {
-                 Path {
+            Rectangle {
+                Path {
                     width: 180px;
                     height: 150px;
                     commands: "M11 5V-14A1 1 0 007-14V5L3 0A1 1 0 001 2L8 10C9 11 9 11 10 10L17 2A1 1 0 0015 0L11 5";
@@ -275,7 +280,7 @@ export component AppWindow inherits Window {
                 height: 100px;
                 background: #FF3900;
                 Text {
-                    text: current_screen == "welcome" ? "WELCOME \{user-name}" :
+                    text: current_screen == "welcome" ? "WELCOME \{user_name}" :
                           current_screen == "trivia1" ? "TRIVIA 1" :
                           "TRIVIA 2";
                     font-size: 50px;

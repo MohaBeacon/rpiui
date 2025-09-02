@@ -1,14 +1,21 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use std::fs::File;
+use std::io::Write;
 use std::thread;
 use std::time::Duration;
+use tokio::time::sleep;
+use chrono::Local;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
-use slint::SharedString;
+use slint::{SharedString, Weak};
 use lazy_static::lazy_static;
 
 slint::include_modules!();
 
-// Configuration struct
+// Configuration struct for NFC
 struct Config {
     scan_interval: Duration,
     stabilize_delay: Duration,
@@ -25,8 +32,437 @@ lazy_static! {
     };
 }
 
+// Define error types for API
+#[derive(Error, Debug)]
+enum AppError {
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("Event ID not found in response")]
+    MissingEventId,
+    #[error("API error: {status} - {message}")]
+    ApiError { status: u16, message: String },
+    #[error("File IO error: {0}")]
+    FileIo(#[from] std::io::Error),
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("PCSC error: {0}")]
+    Pcsc(#[from] pcsc::Error),
+}
+
+// Define the POST request payload for the get_by_slug endpoint
+#[derive(Serialize)]
+struct PostPayload {
+    access_token: String,
+    slug: String,
+}
+
+// Define the POST request payload for the guests endpoint
+#[derive(Serialize)]
+struct GuestsPostPayload {
+    access_token: String,
+    guest_tag: String,
+}
+
+// Define the POST request payload for the load_score endpoint
+#[derive(Serialize)]
+struct LoadScorePostPayload {
+    access_token: String,
+    checkpoint_id: String,
+    guest_tag: String,
+    score: String,
+}
+
+// Define the expected POST response structure for the get_by_slug endpoint
+#[derive(Deserialize, Serialize)]
+struct Checkpoint {
+    event_id: i32,
+    id: i32,
+    name: String,
+    repetible: i32,
+    score: i32,
+    slug: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct PostResponse {
+    checkpoint: Checkpoint,
+}
+
+// Define the expected POST response structure for the guests endpoint
+#[derive(Deserialize, Serialize)]
+struct Guest {
+    name: String,
+    #[serde(flatten)]
+    other: serde_json::Value, // Capture other fields flexibly
+}
+
+#[derive(Deserialize, Serialize)]
+struct GuestsPostResponse {
+    guests: Vec<Guest>,
+}
+
+// Define the expected POST response structure for the load_score endpoint
+#[derive(Deserialize, Serialize)]
+struct LoadScorePostResponse {
+    #[serde(flatten)]
+    data: serde_json::Value, // Flexible to capture any response structure
+}
+
+// Function to validate inputs
+fn validate_inputs(access_token: &str, slug: &str, guest_tags: &[String], score: &str) -> Result<(), AppError> {
+    if access_token.is_empty() {
+        return Err(AppError::InvalidInput("Access token cannot be empty".to_string()));
+    }
+    if slug.is_empty() {
+        return Err(AppError::InvalidInput("Slug cannot be empty".to_string()));
+    }
+    if guest_tags.is_empty() {
+        return Err(AppError::InvalidInput("At least one guest tag is required".to_string()));
+    }
+    for tag in guest_tags {
+        if tag.is_empty() {
+            return Err(AppError::InvalidInput("Guest tags cannot be empty".to_string()));
+        }
+    }
+    if score.is_empty() {
+        return Err(AppError::InvalidInput("Score cannot be empty".to_string()));
+    }
+    if score.parse::<i32>().is_err() {
+        return Err(AppError::InvalidInput("Score must be a valid integer".to_string()));
+    }
+    Ok(())
+}
+
+// Function to log responses to a file
+fn log_to_file(log_file: &mut File, label: &str, content: &str) -> Result<(), AppError> {
+    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    writeln!(log_file, "[{}] {}", timestamp, label)?;
+    writeln!(log_file, "{}", content)?;
+    writeln!(log_file, "----------------------------------------")?;
+    log_file.flush()?;
+    Ok(())
+}
+
+// Function for the get_by_slug POST request with retry logic
+async fn post_get_by_slug(
+    client: &Client,
+    access_token: &str,
+    slug: &str,
+    max_retries: u32,
+    log_file: &mut File,
+) -> Result<PostResponse, AppError> {
+    let post_url = "https://wonderlab.events/controlacceso/v2/api/checkpoints/get_by_slug";
+    let payload = PostPayload {
+        access_token: access_token.to_string(),
+        slug: slug.to_string(),
+    };
+    let payload_json = serde_json::to_string_pretty(&payload)?;
+    log_to_file(log_file, "get_by_slug payload", &payload_json)?;
+
+    for attempt in 1..=max_retries {
+        let response = client
+            .post(post_url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => match resp.status() {
+                reqwest::StatusCode::OK => {
+                    let result = resp.json::<PostResponse>().await?;
+                    let pretty = serde_json::to_string_pretty(&result)?;
+                    log_to_file(log_file, "POST Response (get_by_slug)", &pretty)?;
+                    return Ok(result);
+                }
+                status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
+                    if attempt == max_retries {
+                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        return Err(AppError::ApiError {
+                            status: status.as_u16(),
+                            message,
+                        });
+                    }
+                    sleep(Duration::from_secs(1 << attempt)).await;
+                }
+                status => {
+                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    return Err(AppError::ApiError {
+                        status: status.as_u16(),
+                        message,
+                    });
+                }
+            },
+            Err(e) => {
+                if attempt == max_retries {
+                    return Err(AppError::from(e));
+                }
+                sleep(Duration::from_secs(1 << attempt)).await;
+            }
+        }
+    }
+    Err(AppError::ApiError {
+        status: 0,
+        message: "Max retries reached".to_string(),
+    })
+}
+
+// Function for the visual GET request with retry logic
+async fn get_visual(
+    client: &Client,
+    access_token: &str,
+    event_id: i32,
+    max_retries: u32,
+    log_file: &mut File,
+) -> Result<serde_json::Value, AppError> {
+    let get_url = format!(
+        "https://wonderlab.events/controlacceso/v2/api/checkpoints/visual/{}",
+        event_id
+    );
+
+    for attempt in 1..=max_retries {
+        let response = client
+            .get(&get_url)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => match resp.status() {
+                reqwest::StatusCode::OK => {
+                    let result = resp.json::<serde_json::Value>().await?;
+                    let pretty = serde_json::to_string_pretty(&result)?;
+                    log_to_file(log_file, "GET Response (visual)", &pretty)?;
+                    return Ok(result);
+                }
+                status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
+                    if attempt == max_retries {
+                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        return Err(AppError::ApiError {
+                            status: status.as_u16(),
+                            message,
+                        });
+                    }
+                    sleep(Duration::from_secs(1 << attempt)).await;
+                }
+                status => {
+                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    return Err(AppError::ApiError {
+                        status: status.as_u16(),
+                        message,
+                    });
+                }
+            },
+            Err(e) => {
+                if attempt == max_retries {
+                    return Err(AppError::from(e));
+                }
+                sleep(Duration::from_secs(1 << attempt)).await;
+            }
+        }
+    }
+    Err(AppError::ApiError {
+        status: 0,
+        message: "Max retries reached".to_string(),
+    })
+}
+
+// Function for the guests POST request with retry logic
+async fn post_guests(
+    client: &Client,
+    access_token: &str,
+    guest_tag: &str,
+    max_retries: u32,
+    log_file: &mut File,
+) -> Result<GuestsPostResponse, AppError> {
+    let post_url = "https://wonderlab.events/controlacceso/v2/api/control/guests";
+    let payload = GuestsPostPayload {
+        access_token: access_token.to_string(),
+        guest_tag: guest_tag.to_string(),
+    };
+    let payload_json = serde_json::to_string_pretty(&payload)?;
+    log_to_file(log_file, "guests payload", &payload_json)?;
+
+    for attempt in 1..=max_retries {
+        let response = client
+            .post(post_url)
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", access_token))
+            .json(&payload)
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => match resp.status() {
+                reqwest::StatusCode::OK => {
+                    let result = resp.json::<GuestsPostResponse>().await?;
+                    let pretty = serde_json::to_string_pretty(&result)?;
+                    log_to_file(log_file, &format!("POST Response (guests) for tag {}", guest_tag), &pretty)?;
+                    return Ok(result);
+                }
+                status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
+                    if attempt == max_retries {
+                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        return Err(AppError::ApiError {
+                            status: status.as_u16(),
+                            message,
+                        });
+                    }
+                    sleep(Duration::from_secs(1 << attempt)).await;
+                }
+                status => {
+                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    return Err(AppError::ApiError {
+                        status: status.as_u16(),
+                        message,
+                    });
+                }
+            },
+            Err(e) => {
+                if attempt == max_retries {
+                    return Err(AppError::from(e));
+                }
+                sleep(Duration::from_secs(1 << attempt)).await;
+            }
+        }
+    }
+    Err(AppError::ApiError {
+        status: 0,
+        message: "Max retries reached".to_string(),
+    })
+}
+
+// Function for the load_score POST request with retry logic
+async fn post_load_score(
+    client: &Client,
+    access_token: &str,
+    checkpoint_id: i32,
+    guest_tag: &str,
+    score: &str,
+    max_retries: u32,
+    log_file: &mut File,
+) -> Result<LoadScorePostResponse, AppError> {
+    let post_url = "https://wonderlab.events/controlacceso/v2/api/checkpoints/load_score";
+    let payload = LoadScorePostPayload {
+        access_token: access_token.to_string(),
+        checkpoint_id: checkpoint_id.to_string(),
+        guest_tag: guest_tag.to_string(),
+        score: score.to_string(),
+    };
+    let payload_json = serde_json::to_string_pretty(&payload)?;
+    log_to_file(log_file, "load_score payload", &payload_json)?;
+
+    for attempt in 1..=max_retries {
+        let response = client
+            .post(post_url)
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", access_token))
+            .json(&payload)
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => match resp.status() {
+                reqwest::StatusCode::OK => {
+                    let result = resp.json::<LoadScorePostResponse>().await?;
+                    let pretty = serde_json::to_string_pretty(&result)?;
+                    log_to_file(log_file, &format!("POST Response (load_score) for tag {}", guest_tag), &pretty)?;
+                    return Ok(result);
+                }
+                reqwest::StatusCode::CONFLICT => {
+                    let message = resp.text().await.unwrap_or_else(|_| "Score already loaded".to_string());
+                    log_to_file(log_file, &format!("Score already loaded for tag {}", guest_tag), &message)?;
+                    return Ok(LoadScorePostResponse {
+                        data: serde_json::json!({ "message": "Score already loaded" }),
+                    });
+                }
+                status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
+                    if attempt == max_retries {
+                        let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                        return Err(AppError::ApiError {
+                            status: status.as_u16(),
+                            message,
+                        });
+                    }
+                    sleep(Duration::from_secs(1 << attempt)).await;
+                }
+                status => {
+                    let message = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    return Err(AppError::ApiError {
+                        status: status.as_u16(),
+                        message,
+                    });
+                }
+            },
+            Err(e) => {
+                if attempt == max_retries {
+                    return Err(AppError::from(e));
+                }
+                sleep(Duration::from_secs(1 << attempt)).await;
+            }
+        }
+    }
+    Err(AppError::ApiError {
+        status: 0,
+        message: "Max retries reached".to_string(),
+    })
+}
+
+// Function to handle multiple guest tags for guests and load_score
+async fn post_multiple_guests_and_scores(
+    client: &Client,
+    access_token: &str,
+    guest_tags: &[String],
+    checkpoint_id: i32,
+    score: &str,
+    max_retries: u32,
+    log_file: &mut File,
+    ui_handle: Weak<AppWindow>,
+) -> Result<(Vec<GuestsPostResponse>, Vec<LoadScorePostResponse>), AppError> {
+    let mut guests_responses = Vec::new();
+    let mut load_score_responses = Vec::new();
+
+    log_to_file(log_file, "Processing guest tags", &format!("Total tags: {}", guest_tags.len()))?;
+
+    for guest_tag in guest_tags {
+        log_to_file(log_file, "Processing guest_tag", guest_tag)?;
+
+        // Call guests endpoint
+        let guests_response = post_guests(client, access_token, guest_tag, max_retries, log_file).await?;
+        // Extract username from guests response
+        let username = guests_response.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
+        if !username.is_empty() {
+            let weak = ui_handle.clone();
+            let username = SharedString::from(username);
+            slint::invoke_from_event_loop(move || {
+                if let Some(ui) = weak.upgrade() {
+                    ui.set_user_name(username);
+                }
+            })?;
+        }
+        guests_responses.push(guests_response);
+
+        // Call load_score endpoint
+        let load_score_response = post_load_score(
+            client,
+            access_token,
+            checkpoint_id,
+            guest_tag,
+            score,
+            max_retries,
+            log_file,
+        )
+        .await?;
+        load_score_responses.push(load_score_response);
+    }
+
+    Ok((guests_responses, load_score_responses))
+}
+
 // Helper function to show errors in UI
-fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
+fn show_error(ui_handle: &Weak<AppWindow>, message: &str) {
     let weak = ui_handle.clone();
     let msg = message.to_string();
     slint::invoke_from_event_loop(move || {
@@ -36,10 +472,113 @@ fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
     }).unwrap();
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize Slint UI
     let ui = AppWindow::new()?;
     let ui_handle = ui.as_weak();
+
+    // API configuration
+    let access_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMwLCJyb2xlIjoiY29udHJvbCJ9.OjbB_aLB6KnBXEeMpKP9HZMMN73zm_-0mBuvNyDvSpI".to_string();
+    let slug = "checkpoint-prueba-546".to_string();
+
+    // Initialize HTTP client
+    let client = Client::new();
+
+    // Create log file with timestamp
+    let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let log_filename = format!("api_log_{}.txt", timestamp);
+    let mut log_file = File::create(&log_filename)?;
+
+    // Set up UI callback to handle score submission
+    let ui_handle_clone = ui_handle.clone();
+    ui.global::<TriviaScreen>().on_submit_score(move |score| {
+        let ui_handle = ui_handle_clone.clone();
+        let access_token = access_token.clone();
+        let slug = slug.clone();
+        let score = score.to_string();
+        let client = client.clone();
+        let mut log_file = File::create(format!("api_log_{}.txt", Local::now().format("%Y%m%d_%H%M%S"))).unwrap();
+
+        // Spawn async task to handle API calls
+        slint::spawn_local(async move {
+            // Get guest_tag from UI (card_uid)
+            let guest_tag = if let Some(ui) = ui_handle.upgrade() {
+                let card_uid = ui.get_card_uid();
+                if card_uid.starts_with("Card UID: ") {
+                    card_uid[9..].to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
+            if guest_tag.is_empty() {
+                show_error(&ui_handle, "No valid card UID detected");
+                return;
+            }
+
+            let guest_tags = vec![guest_tag];
+
+            // Validate inputs
+            if let Err(e) = validate_inputs(&access_token, &slug, &guest_tags, &score) {
+                show_error(&ui_handle, &e.to_string());
+                return;
+            }
+
+            // Step 1: Make the get_by_slug POST request
+            let post_response = match post_get_by_slug(&client, &access_token, &slug, 3, &mut log_file).await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    show_error(&ui_handle, &e.to_string());
+                    return;
+                }
+            };
+            log_to_file(&mut log_file, "Checkpoint ID", &post_response.checkpoint.id.to_string())?;
+
+            // Step 2: Extract event_id and checkpoint_id
+            let event_id = post_response.checkpoint.event_id;
+            let checkpoint_id = post_response.checkpoint.id;
+
+            // Step 3: Make the visual GET request
+            if let Err(e) = get_visual(&client, &access_token, event_id, 3, &mut log_file).await {
+                show_error(&ui_handle, &e.to_string());
+                return;
+            }
+
+            // Step 4: Make the guests and load_score POST requests
+            if let Err(e) = post_multiple_guests_and_scores(
+                &client,
+                &access_token,
+                &guest_tags,
+                checkpoint_id,
+                &score,
+                3,
+                &mut log_file,
+                ui_handle.clone(),
+            )
+            .await
+            {
+                show_error(&ui_handle, &e.to_string());
+                return;
+            }
+
+            // Notify success and reset quiz state
+            slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_handle.upgrade() {
+                    ui.set_card_uid(SharedString::from("Score submitted successfully"));
+                    // Reset TriviaScreen state
+                    ui.global::<TriviaScreen>().set_score(0);
+                    ui.global::<TriviaScreen>().set_current_question(0);
+                    ui.global::<TriviaScreen>().set_answered(false);
+                    ui.global::<TriviaScreen>().set_quiz_finished(false);
+                    ui.set_current_screen(SharedString::from("welcome"));
+                }
+            }).unwrap();
+        })
+        .unwrap();
+    });
 
     // Spawn NFC scanning thread
     thread::spawn(move || {
@@ -104,9 +643,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     slint::invoke_from_event_loop(move || {
                                         if let Some(ui) = weak.upgrade() {
                                             ui.set_card_uid(SharedString::from(msg));
-                                            ui.set_current_screen(SharedString::from("welcome")); // Move to welcome screen
-                                            // Optionally set user-name if you have a way to map UID to a name
-                                            // ui.set_user_name(SharedString::from("User"));
+                                            ui.set_current_screen(SharedString::from("welcome"));
                                         }
                                     }).unwrap();
                                 }
@@ -137,7 +674,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         slint::invoke_from_event_loop(move || {
                             if let Some(ui) = weak.upgrade() {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
-                                // Return to preintro when card is removed
+                                ui.set_user_name(SharedString::from(""));
+                                ui.set_current_screen(SharedString::from("preintro"));
+                                // Reset TriviaScreen state
+                                ui.global::<TriviaScreen>().set_score(0);
+                                ui.global::<TriviaScreen>().set_current_question(0);
+                                ui.global::<TriviaScreen>().set_answered(false);
+                                ui.global::<TriviaScreen>().set_quiz_finished(false);
                             }
                         }).unwrap();
                     }
