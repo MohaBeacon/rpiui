@@ -17,8 +17,38 @@ component CustomButton inherits Rectangle {
         vertical-alignment: center;
         wrap: word-wrap;
         width: 100%;
-        font-family: "Bebas Neue";
+        font-family: "Montaserrat";
         font-weight: 400;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+
+component LightfontButton inherits Rectangle {
+    in property <string> text; // Text to display
+    in property <bool> enabled: true; // Enabled state
+    callback clicked; // Click event
+    border-radius: 30px;
+    background: black; // Consistent background
+    border-width: 1px;
+    min-height: 40px; // Minimum height to accommodate text
+
+    Text {
+        text: root.text;
+        font-size: 36px;
+        color: white; // Consistent text color
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        wrap: word-wrap;
+        width: 100%;
+        font-family: "Montaserrat";
+        font-weight: 100;
     }
 
     TouchArea {
@@ -46,7 +76,7 @@ component ReturnButton inherits Rectangle {
         vertical-alignment: center;
         wrap: word-wrap;
         width: 100%;
-        font-family: "Bebas Neue";
+        font-family: "Montaserrat";
         font-weight: 400;
     }
 
@@ -61,6 +91,7 @@ component ReturnButton inherits Rectangle {
 
 
 export component Intropage inherits Window {
+
     no-frame: true;
     width: 1200px;
     height: 1000px;
@@ -105,7 +136,7 @@ export component Intropage inherits Window {
                 wrap: word-wrap;
                 width: 50%;
                 x: (parent.width - self.width) / 2; // Center horizontally
-                font-family: "Bebas Neue";
+                font-family: "Montserrat";
                 font-weight: 800;
             }
         }
@@ -183,10 +214,10 @@ export component Intropage inherits Window {
                         horizontal-alignment: center;
                         wrap: word-wrap;
                         width: 100%;
-                        font-family: "Bebas Neue";
+                        font-family: "Montaserrat";
                         color: white;
                     }
-                    for answer[idx] in answers[current_question] : CustomButton {
+                    for answer[idx] in answers[current_question] : LightfontButton {
                         text: answer;
                         enabled: !answered;
                         width: 100%;
@@ -233,7 +264,7 @@ export component Intropage inherits Window {
                         horizontal-alignment: center;
                         wrap: word-wrap;
                         width: 50%;
-                        font-weight: 1200;
+                        font-weight: 1400;
                     }
                     Text {
                         text: "POINTS";
@@ -304,10 +335,10 @@ export component Intropage inherits Window {
                         horizontal-alignment: center;
                         wrap: word-wrap;
                         width: 100%;
-                        font-family: "Bebas Neue";
+                        font-family: "Montaserrat";
                         color: white;
                     }
-                    for answer[idx] in answers[current_question] : CustomButton {
+                    for answer[idx] in answers[current_question] : LightfontButton {
                         text: answer;
                         enabled: !answered;
                         width: 100%;

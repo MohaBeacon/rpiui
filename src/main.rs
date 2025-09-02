@@ -1,7 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
@@ -34,8 +32,14 @@ fn show_error(ui_handle: &slint::Weak<AppWindow>, message: &str) {
     slint::invoke_from_event_loop(move || {
         if let Some(ui) = weak.upgrade() {
             ui.set_card_uid(SharedString::from(format!("Error: {}", msg)));
-            
         }
+    }).unwrap();
+}
+
+fn show_welcome_screen(card_uid: String) {
+    slint::invoke_from_event_loop(move || {
+        let welcome_ui = Intropage::new().expect("Failed to create IntroPage");
+        welcome_ui.show().expect("Failed to show IntroPage");
     }).unwrap();
 }
 
@@ -44,16 +48,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
     let ui_handle = ui.as_weak();
 
-    // Set up graceful shutdown
-    let running = Arc::new(AtomicBool::new(true));
-    let running_clone = running.clone();
-
-    // Handle quit button
-    ui.on_request_quit(move || {
-        running_clone.store(false, Ordering::SeqCst);
-        slint::quit_event_loop().unwrap();
-    });
-
     // Spawn NFC scanning thread
     thread::spawn(move || {
         // Establish PC/SC context
@@ -61,12 +55,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(c) => c,
             Err(e) => {
                 show_error(&ui_handle, &format!("Failed to establish PC/SC context: {}", e));
-                let weak = ui_handle.clone();
-                slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = weak.upgrade() {
-                        
-                    }
-                }).unwrap();
                 return;
             }
         };
@@ -77,12 +65,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(r) => r,
             Err(e) => {
                 show_error(&ui_handle, &format!("Failed to list readers: {}", e));
-                let weak = ui_handle.clone();
-                slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = weak.upgrade() {
-                        
-                    }
-                }).unwrap();
                 return;
             }
         };
@@ -91,23 +73,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let acr122u = match readers.into_iter()
             .find(|r| r.to_string_lossy().contains(&CONFIG.reader_name))
         {
-            Some(r) => {
-                let weak = ui_handle.clone();
-                slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = weak.upgrade() {
-                       
-                    }
-                }).unwrap();
-                r
-            }
+            Some(r) => r,
             None => {
                 show_error(&ui_handle, "No ACR122U reader found!");
-                let weak = ui_handle.clone();
-                slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = weak.upgrade() {
-                        
-                    }
-                }).unwrap();
                 return;
             }
         };
@@ -115,15 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut last_uid = String::new();
 
         // Main scanning loop
-        while running.load(Ordering::SeqCst) {
-            // Update scanning status
-            let weak = ui_handle.clone();
-            slint::invoke_from_event_loop(move || {
-                if let Some(ui) = weak.upgrade() {
-                    
-                }
-            }).unwrap();
-
+        loop {
             match ctx.connect(acr122u, ShareMode::Shared, Protocols::ANY) {
                 Ok(card) => {
                     thread::sleep(CONFIG.stabilize_delay);
@@ -177,12 +137,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(Error::NoSmartcard) => {
                     if !last_uid.is_empty() {
                         last_uid.clear();
-                        let weak = ui_handle.clone();
-                        slint::invoke_from_event_loop(move || {
-                            if let Some(ui) = weak.upgrade() {
-                                
-                            }
-                        }).unwrap();
                     }
                     thread::sleep(CONFIG.scan_interval);
                 }
@@ -191,14 +145,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     thread::sleep(Duration::from_millis(500));
                 }
             }
-
-            // Update scanning status
-            let weak = ui_handle.clone();
-            slint::invoke_from_event_loop(move || {
-                if let Some(ui) = weak.upgrade() {
-                    
-                }
-            }).unwrap();
         }
     });
 

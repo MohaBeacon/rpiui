@@ -4,7 +4,6 @@ import { AboutSlint, Button, VerticalBox } from "std-widgets.slint";
 export component AppWindow inherits Window {
   
     in property <string> card_uid: "Waiting for card...";
-    callback request_quit();
     no-frame: true;
     width: 1200px;
     height: 800px;
@@ -30,7 +29,7 @@ export component AppWindow inherits Window {
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
-                    font-family: "Bebas Neue";
+                    font-family: "Montaserrat";
                     font-weight: 800;
                 }
                 
@@ -43,7 +42,7 @@ export component AppWindow inherits Window {
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
-                    font-family: "Bebas Neue";
+                    font-family: "Montaserrat";
                     font-weight: 800;
                 }
             }
@@ -55,12 +54,7 @@ export component AppWindow inherits Window {
                     color: blue;
                 }
             }
-            Rectangle {
-                 Button {
-            text: "Quit";
-            clicked => { request_quit() }
-        }
-            }
+           
 
             Rectangle {
                  Path {
