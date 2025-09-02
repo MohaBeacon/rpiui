@@ -9,8 +9,7 @@ use std::thread;
 use std::time::Duration;
 use chrono::Local;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
-use slint::{SharedString, Weak, EventLoopError};
-use lazy_static::lazy_static;
+use slint::{SharedString, Weak};
 
 slint::include_modules!();
 
@@ -22,7 +21,7 @@ struct Config {
     valid_uid_lengths: Vec<usize>,
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CONFIG: Config = Config {
         scan_interval: Duration::from_millis(200),
         stabilize_delay: Duration::from_millis(100),
@@ -49,7 +48,7 @@ enum AppError {
     #[error("PCSC error: {0}")]
     Pcsc(#[from] pcsc::Error),
     #[error("Event loop error: {0}")]
-    EventLoop(#[from] EventLoopError),
+    EventLoop(#[from] slint::EventLoopError),
 }
 
 // Define the POST request payload for the get_by_slug endpoint
@@ -431,12 +430,11 @@ fn post_multiple_guests_and_scores(
         if !username.is_empty() {
             let weak = ui_handle.clone();
             let username = SharedString::from(username);
-            slint::invoke_from_event_loop(move || -> Result<(), AppError> {
+            slint::invoke_from_event_loop(move || {
                 if let Some(ui) = weak.upgrade() {
                     ui.set_user_name(username);
                 }
-                Ok(())
-            })?;
+            }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
         }
         guests_responses.push(guests_response);
 
@@ -456,16 +454,14 @@ fn post_multiple_guests_and_scores(
 }
 
 // Helper function to show errors in UI
-fn show_error(ui_handle: &Weak<AppWindow>, message: &str) -> Result<(), AppError> {
+fn show_error(ui_handle: &Weak<AppWindow>, message: &str) {
     let weak = ui_handle.clone();
     let msg = message.to_string();
-    slint::invoke_from_event_loop(move || -> Result<(), AppError> {
+    slint::invoke_from_event_loop(move || {
         if let Some(ui) = weak.upgrade() {
             ui.set_card_uid(SharedString::from(format!("Error: {}", msg)));
         }
-        Ok(())
-    })?;
-    Ok(())
+    }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -487,7 +483,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set up UI callback to handle score submission
     let ui_handle_clone = ui_handle.clone();
-    ui.global::<TriviaScreen>().on_submit_score({
+    ui.on_submit_score({
         let access_token = access_token.clone();
         let slug = slug.clone();
         let client = client.clone();
@@ -499,7 +495,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let client = client.clone();
             let mut log_file = File::create(format!("api_log_{}.txt", Local::now().format("%Y%m%d_%H%M%S"))).unwrap();
 
-            slint::invoke_from_event_loop(move || -> Result<(), AppError> {
+            slint::invoke_from_event_loop(move || {
                 let guest_tag = if let Some(ui) = ui_handle.upgrade() {
                     let card_uid = ui.get_card_uid();
                     if card_uid.starts_with("Card UID: ") {
@@ -512,32 +508,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
 
                 if guest_tag.is_empty() {
-                    show_error(&ui_handle, "No valid card UID detected")?;
-                    return Ok(());
+                    show_error(&ui_handle, "No valid card UID detected");
+                    return;
                 }
 
                 let guest_tags = vec![guest_tag];
 
                 if let Err(e) = validate_inputs(&access_token, &slug, &guest_tags, &score) {
-                    show_error(&ui_handle, &e.to_string())?;
-                    return Ok(());
+                    show_error(&ui_handle, &e.to_string());
+                    return;
                 }
 
                 let post_response = match post_get_by_slug(&client, &access_token, &slug, 3, &mut log_file) {
                     Ok(resp) => resp,
                     Err(e) => {
-                        show_error(&ui_handle, &e.to_string())?;
-                        return Ok(());
+                        show_error(&ui_handle, &e.to_string());
+                        return;
                     }
                 };
-                log_to_file(&mut log_file, "Checkpoint ID", &post_response.checkpoint.id.to_string())?;
+                log_to_file(&mut log_file, "Checkpoint ID", &post_response.checkpoint.id.to_string())
+                    .unwrap_or_else(|e| eprintln!("Log error: {}", e));
 
                 let event_id = post_response.checkpoint.event_id;
                 let checkpoint_id = post_response.checkpoint.id;
 
                 if let Err(e) = get_visual(&client, &access_token, event_id, 3, &mut log_file) {
-                    show_error(&ui_handle, &e.to_string())?;
-                    return Ok(());
+                    show_error(&ui_handle, &e.to_string());
+                    return;
                 }
 
                 if let Err(e) = post_multiple_guests_and_scores(
@@ -550,20 +547,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &mut log_file,
                     ui_handle.clone(),
                 ) {
-                    show_error(&ui_handle, &e.to_string())?;
-                    return Ok(());
+                    show_error(&ui_handle, &e.to_string());
+                    return;
                 }
 
                 if let Some(ui) = ui_handle.upgrade() {
                     ui.set_card_uid(SharedString::from("Score submitted successfully"));
-                    ui.global::<TriviaScreen>().set_score(0);
-                    ui.global::<TriviaScreen>().set_current_question(0);
-                    ui.global::<TriviaScreen>().set_answered(false);
-                    ui.global::<TriviaScreen>().set_quiz_finished(false);
-                    ui.set_current_screen(SharedString::from("welcome"));
+                    // Reset TriviaScreen state based on current_screen
+                    if ui.get_current_screen() == "trivia1" || ui.get_current_screen() == "trivia2" {
+                        // Note: We can't directly access TriviaScreen instances, so we rely on Slint to reset state via return-to-start
+                        ui.set_current_screen(SharedString::from("welcome"));
+                    }
                 }
-                Ok(())
-            }).unwrap(); // Consider proper error handling in production
+            }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
         }
     });
 
@@ -572,7 +568,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let ctx = match Context::establish(Scope::User) {
             Ok(c) => c,
             Err(e) => {
-                show_error(&ui_handle, &format!("Failed to establish PC/SC context: {}", e)).unwrap();
+                show_error(&ui_handle, &format!("Failed to establish PC/SC context: {}", e));
                 return;
             }
         };
@@ -581,7 +577,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let readers = match ctx.list_readers(&mut readers_buffer) {
             Ok(r) => r,
             Err(e) => {
-                show_error(&ui_handle, &format!("Failed to list readers: {}", e)).unwrap();
+                show_error(&ui_handle, &format!("Failed to list readers: {}", e));
                 return;
             }
         };
@@ -591,7 +587,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             Some(r) => r,
             None => {
-                show_error(&ui_handle, "No ACR122U reader found!").unwrap();
+                show_error(&ui_handle, "No ACR122U reader found!");
                 return;
             }
         };
@@ -623,16 +619,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     last_uid = uid_str.clone();
                                     let weak = ui_handle.clone();
                                     let msg = format!("Card UID: {}", uid_str);
-                                    slint::invoke_from_event_loop(move || -> Result<(), AppError> {
+                                    slint::invoke_from_event_loop(move || {
                                         if let Some(ui) = weak.upgrade() {
                                             ui.set_card_uid(SharedString::from(msg));
                                             ui.set_current_screen(SharedString::from("welcome"));
                                         }
-                                        Ok(())
-                                    }).unwrap();
+                                    }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                                 }
                             } else {
-                                show_error(&ui_handle, &format!("Invalid UID length: {}", uid.len())).unwrap();
+                                show_error(&ui_handle, &format!("Invalid UID length: {}", uid.len()));
                             }
                         } else {
                             show_error(
@@ -642,10 +637,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     response[response.len() - 2],
                                     response[response.len() - 1]
                                 ),
-                            ).unwrap();
+                            );
                         }
                     } else {
-                        show_error(&ui_handle, "Failed to read card").unwrap();
+                        show_error(&ui_handle, "Failed to read card");
                     }
 
                     let _ = card.disconnect(pcsc::Disposition::LeaveCard);
@@ -655,23 +650,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !last_uid.is_empty() {
                         last_uid.clear();
                         let weak = ui_handle.clone();
-                        slint::invoke_from_event_loop(move || -> Result<(), AppError> {
+                        slint::invoke_from_event_loop(move || {
                             if let Some(ui) = weak.upgrade() {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
                                 ui.set_user_name(SharedString::from(""));
                                 ui.set_current_screen(SharedString::from("preintro"));
-                                ui.global::<TriviaScreen>().set_score(0);
-                                ui.global::<TriviaScreen>().set_current_question(0);
-                                ui.global::<TriviaScreen>().set_answered(false);
-                                ui.global::<TriviaScreen>().set_quiz_finished(false);
+                                // TriviaScreen state is reset via return-to-start in ui.slint
                             }
-                            Ok(())
-                        }).unwrap();
+                        }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                     }
                     thread::sleep(CONFIG.scan_interval);
                 }
                 Err(e) => {
-                    show_error(&ui_handle, &format!("Connect error: {}", e)).unwrap();
+                    show_error(&ui_handle, &format!("Connect error: {}", e));
                     thread::sleep(Duration::from_millis(500));
                 }
             }
