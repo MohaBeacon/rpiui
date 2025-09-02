@@ -553,11 +553,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 if let Some(ui) = ui_handle.upgrade() {
                     ui.set_card_uid(SharedString::from("Score submitted successfully"));
-                    // Reset TriviaScreen state based on current_screen
-                    if ui.get_current_screen() == "trivia1" || ui.get_current_screen() == "trivia2" {
-                        // Note: We can't directly access TriviaScreen instances, so we rely on Slint to reset state via return-to-start
-                        ui.set_current_screen(SharedString::from("welcome"));
-                    }
+                    ui.set_current_screen(SharedString::from("welcome"));
                 }
             }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
         }
@@ -655,7 +651,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
                                 ui.set_user_name(SharedString::from(""));
                                 ui.set_current_screen(SharedString::from("preintro"));
-                                // TriviaScreen state is reset via return-to-start in ui.slint
                             }
                         }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                     }
