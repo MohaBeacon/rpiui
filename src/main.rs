@@ -335,7 +335,7 @@ fn post_guests(
 fn post_load_score(
     client: &Client,
     access_token: &str,
-    checkpoint_id: i32,
+    checkpoint_id: &str,
     guest_tag: &str,
     score: &str,
     max_retries: u32,
