@@ -339,6 +339,18 @@ export component AppWindow inherits Window {
                                     trivia_name = "TRIVIA 2";
                                 }
                             }
+
+                            AppButton {
+                                text: "RETURN TO START";
+                                width: 80%;
+                                min-height: 60px;
+                                background: transparent;
+                                text-color: black;
+                                x: (parent.width - self.width) / 2;
+                                clicked => {
+                                    current_screen = "preintro";
+                                }
+                            }
                         }
                     }
                 }
@@ -359,7 +371,7 @@ export component AppWindow inherits Window {
                         ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
                     ];
                     correct_answers: [1, 0, 0, 0, 1];
-                    return-to-start => { current_screen = "welcome"; }
+                    return-to-start => { current_screen = "preintro"; }
                 }
 
                 if current_screen == "trivia2": TriviaScreen {
@@ -376,7 +388,7 @@ export component AppWindow inherits Window {
                         ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
                     ];
                     correct_answers: [0, 0, 0, 1];
-                    return-to-start => { current_screen = "welcome"; }
+                    return-to-start => { current_screen = "preintro"; }
                 }
             }
         }
