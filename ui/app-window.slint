@@ -39,6 +39,7 @@ component TriviaScreen inherits VerticalBox {
     in property <[[string]]> answers;
     in property <[int]> correct_answers;
     callback return-to-start;
+    callback return-to-quiz-select;
     callback submit_score(int); // New callback to submit score
 
     alignment: center;
@@ -142,6 +143,17 @@ component TriviaScreen inherits VerticalBox {
             }
         }
         AppButton {
+            text: "RETURN TO QUIZ SELECT";
+            width: 80%;
+            min-height: 60px;
+            background: transparent;
+            text-color: black;
+            x: (parent.width - self.width) / 2;
+            clicked => {
+                root.return-to-quiz-select();
+            }
+        }
+        AppButton {
             text: "RETURN TO START";
             width: 80%;
             min-height: 60px;
@@ -202,7 +214,7 @@ export component AppWindow inherits Window {
                     font-size: 40px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
-                    text: "THINK YOU’VE GOT WHAT IT TAKES TO BE A BETWARRIOR EXPERT?";
+                    text: "¡PARTICIPÁ DE LAS TRIVIAS Y SUMÁ PUNTOS!";
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
@@ -220,7 +232,7 @@ export component AppWindow inherits Window {
                     font-size: 40px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
-                    text: "SCAN YOUR WRISTBAND TO START!";
+                    text: "ESCANEÁ TU PULSERA PARA PARTICIPAR";
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
@@ -292,10 +304,21 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                     color: black;
                     wrap: word-wrap;
-                    width: 80%;
+                    width: 50%;
                     x: (parent.width - self.width) / 2;
                     font-family: "Montserrat";
                     font-weight: 800;
+                }
+                Text {
+                    text:"ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
+                    font-size: 30px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    color: white;
+                    wrap: word-wrap;
+                    width: 50%;
+                    font-family: "Montserrat";
+                    font-weight: 400;
                 }
             }
 
@@ -314,7 +337,7 @@ export component AppWindow inherits Window {
                             alignment: center;
                             spacing: 15px;
                             AppButton {
-                                text: "TRIVIA 1";
+                                text: "TU CALLROOM FAVORITO";
                                 width: 300px;
                                 height: 80px;
                                 font-weight: 400;
@@ -327,7 +350,7 @@ export component AppWindow inherits Window {
                                 }
                             }
                             AppButton {
-                                text: "TRIVIA 2";
+                                text: "TU SALA FAVORITA";
                                 width: 300px;
                                 height: 80px;
                                 font-weight: 400;
@@ -341,7 +364,7 @@ export component AppWindow inherits Window {
                             }
 
                             AppButton {
-                                text: "RETURN TO START";
+                                text: "VOLVER AL INICIO";
                                 width: 80%;
                                 min-height: 60px;
                                 background: transparent;
@@ -372,6 +395,8 @@ export component AppWindow inherits Window {
                     ];
                     correct_answers: [1, 0, 0, 0, 1];
                     return-to-start => { current_screen = "preintro"; }
+                    return-to-quiz-select => { current_screen = "welcome"; }
+
                 }
 
                 if current_screen == "trivia2": TriviaScreen {
@@ -389,6 +414,7 @@ export component AppWindow inherits Window {
                     ];
                     correct_answers: [0, 0, 0, 1];
                     return-to-start => { current_screen = "preintro"; }
+                    return-to-quiz-select => { current_screen = "welcome"; }
                 }
             }
         }
