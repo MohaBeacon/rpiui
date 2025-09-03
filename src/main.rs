@@ -153,7 +153,12 @@ fn post_get_by_slug(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    return Ok(resp.json::<PostResponse>()?);
+                    let json_response = resp.json::<PostResponse>()?;
+                    println!(
+                        "post_get_by_slug response: {}",
+                        serde_json::to_string_pretty(&json_response).unwrap_or_else(|_| "Failed to serialize response".to_string())
+                    );
+                    return Ok(json_response);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
@@ -208,7 +213,12 @@ fn get_visual(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    return Ok(resp.json::<serde_json::Value>()?);
+                    let json_response = resp.json::<serde_json::Value>()?;
+                    println!(
+                        "get_visual response: {}",
+                        serde_json::to_string_pretty(&json_response).unwrap_or_else(|_| "Failed to serialize response".to_string())
+                    );
+                    return Ok(json_response);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
@@ -266,7 +276,12 @@ fn post_guests(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    return Ok(resp.json::<GuestsPostResponse>()?);
+                    let json_response = resp.json::<GuestsPostResponse>()?;
+                    println!(
+                        "post_guests response: {}",
+                        serde_json::to_string_pretty(&json_response).unwrap_or_else(|_| "Failed to serialize response".to_string())
+                    );
+                    return Ok(json_response);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
@@ -328,12 +343,22 @@ fn post_load_score(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    return Ok(resp.json::<LoadScorePostResponse>()?);
+                    let json_response = resp.json::<LoadScorePostResponse>()?;
+                    println!(
+                        "post_load_score response: {}",
+                        serde_json::to_string_pretty(&json_response).unwrap_or_else(|_| "Failed to serialize response".to_string())
+                    );
+                    return Ok(json_response);
                 }
                 reqwest::StatusCode::CONFLICT => {
-                    return Ok(LoadScorePostResponse {
+                    let json_response = LoadScorePostResponse {
                         data: serde_json::json!({ "message": "Score already loaded" }),
-                    });
+                    };
+                    println!(
+                        "post_load_score response (CONFLICT): {}",
+                        serde_json::to_string_pretty(&json_response).unwrap_or_else(|_| "Failed to serialize response".to_string())
+                    );
+                    return Ok(json_response);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
