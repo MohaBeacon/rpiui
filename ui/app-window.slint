@@ -169,11 +169,11 @@ component TriviaScreen inherits VerticalBox {
 
 export component AppWindow inherits Window {
     no-frame: true;
-    width: 1980px;
-    height: 1080px;
+    width: 1080px;
+    height: 1980px;
     in-out property <string> card_uid: "Waiting for card...";
     in-out property <string> user_name: "";
-    in-out property <string> current_screen: "preintro";
+    in-out property <string> current_screen: "preintro"; // "preintro", "welcome", "trivia1", "trivia2"
     in-out property <string> trivia_name;
 
     callback submit_score(int);
@@ -181,17 +181,18 @@ export component AppWindow inherits Window {
     
 
     Rectangle {
-        width: 1980px;
-        height: 1080px;
+        width: 1080px;
+        height: 1980px;
         background: #FF3900;
 
         // Preintro page
-        if current_screen == "preintro": VerticalLayout {
-            width: 1200px;
-            height: 800px;
+        if current_screen == "preintro": HorizontalLayout {
+            width: 1080px;
+            height: 1980px;
             spacing: 15px;
             padding: 20px;
             alignment: center;
+   
 
             Rectangle {
                 width: parent.width;
@@ -229,7 +230,7 @@ export component AppWindow inherits Window {
                 height: 100px;
                 background: #FF3900;
                 Text {
-                    font-size: 40px;
+                    //ont-size: 40px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
                     text: "ESCANEÁ TU PULSERA PARA PARTICIPAR";
@@ -244,6 +245,8 @@ export component AppWindow inherits Window {
 
             Rectangle {
                 Path {
+                    x: (parent.width - self.width) / 2;
+                    y: 1000px;
                     width: 180px;
                     height: 150px;
                     commands: "M11 5V-14A1 1 0 007-14V5L3 0A1 1 0 001 2L8 10C9 11 9 11 10 10L17 2A1 1 0 0015 0L11 5";
@@ -294,6 +297,12 @@ export component AppWindow inherits Window {
                     font-family: "Montserrat";
                     font-weight: 800;
                 }
+                
+            }
+            Rectangle {
+                width: parent.width;
+                height: 100px;
+                background: #FF3900;
                 Text {
                     text:"ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
                     font-size: 30px;
