@@ -3,11 +3,8 @@
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use std::fs::File;
-use std::io::Write;
 use std::thread;
 use std::time::Duration;
-use chrono::Local;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
 use slint::{SharedString, Weak};
 
@@ -41,8 +38,6 @@ enum AppError {
     MissingEventId,
     #[error("API error: {status} - {message}")]
     ApiError { status: u16, message: String },
-    #[error("File IO error: {0}")]
-    FileIo(#[from] std::io::Error),
     #[error("Invalid input: {0}")]
     InvalidInput(String),
     #[error("PCSC error: {0}")]
@@ -135,31 +130,18 @@ fn validate_inputs(access_token: &str, slug: &str, guest_tags: &[String], score:
     Ok(())
 }
 
-// Function to log responses to a file
-fn log_to_file(log_file: &mut File, label: &str, content: &str) -> Result<(), AppError> {
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-    writeln!(log_file, "[{}] {}", timestamp, label)?;
-    writeln!(log_file, "{}", content)?;
-    writeln!(log_file, "----------------------------------------")?;
-    log_file.flush()?;
-    Ok(())
-}
-
 // Function for the get_by_slug POST request with retry logic
 fn post_get_by_slug(
     client: &Client,
     access_token: &str,
     slug: &str,
     max_retries: u32,
-    log_file: &mut File,
 ) -> Result<PostResponse, AppError> {
     let post_url = "https://wonderlab.events/controlacceso/v2/api/checkpoints/get_by_slug";
     let payload = PostPayload {
         access_token: access_token.to_string(),
         slug: slug.to_string(),
     };
-    let payload_json = serde_json::to_string_pretty(&payload)?;
-    log_to_file(log_file, "get_by_slug payload", &payload_json)?;
 
     for attempt in 1..=max_retries {
         let response = client
@@ -171,10 +153,7 @@ fn post_get_by_slug(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<PostResponse>()?;
-                    let pretty = serde_json::to_string_pretty(&result)?;
-                    log_to_file(log_file, "POST Response (get_by_slug)", &pretty)?;
-                    return Ok(result);
+                    return Ok(resp.json::<PostResponse>()?);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
@@ -214,7 +193,6 @@ fn get_visual(
     access_token: &str,
     event_id: i32,
     max_retries: u32,
-    log_file: &mut File,
 ) -> Result<serde_json::Value, AppError> {
     let get_url = format!(
         "https://wonderlab.events/controlacceso/v2/api/checkpoints/visual/{}",
@@ -230,10 +208,7 @@ fn get_visual(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<serde_json::Value>()?;
-                    let pretty = serde_json::to_string_pretty(&result)?;
-                    log_to_file(log_file, "GET Response (visual)", &pretty)?;
-                    return Ok(result);
+                    return Ok(resp.json::<serde_json::Value>()?);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
@@ -273,15 +248,12 @@ fn post_guests(
     access_token: &str,
     guest_tag: &str,
     max_retries: u32,
-    log_file: &mut File,
 ) -> Result<GuestsPostResponse, AppError> {
     let post_url = "https://wonderlab.events/controlacceso/v2/api/control/guests";
     let payload = GuestsPostPayload {
         access_token: access_token.to_string(),
         guest_tag: guest_tag.to_string(),
     };
-    let payload_json = serde_json::to_string_pretty(&payload)?;
-    log_to_file(log_file, "guests payload", &payload_json)?;
 
     for attempt in 1..=max_retries {
         let response = client
@@ -294,10 +266,7 @@ fn post_guests(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<GuestsPostResponse>()?;
-                    let pretty = serde_json::to_string_pretty(&result)?;
-                    log_to_file(log_file, &format!("POST Response (guests) for tag {}", guest_tag), &pretty)?;
-                    return Ok(result);
+                    return Ok(resp.json::<GuestsPostResponse>()?);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
                     if attempt == max_retries {
@@ -339,7 +308,6 @@ fn post_load_score(
     guest_tag: &str,
     score: &str,
     max_retries: u32,
-    log_file: &mut File,
 ) -> Result<LoadScorePostResponse, AppError> {
     let post_url = "https://wonderlab.events/controlacceso/v2/api/checkpoints/load_score";
     let payload = LoadScorePostPayload {
@@ -348,8 +316,6 @@ fn post_load_score(
         guest_tag: guest_tag.to_string(),
         score: score.to_string(),
     };
-    let payload_json = serde_json::to_string_pretty(&payload)?;
-    log_to_file(log_file, "load_score payload", &payload_json)?;
 
     for attempt in 1..=max_retries {
         let response = client
@@ -362,14 +328,9 @@ fn post_load_score(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let result = resp.json::<LoadScorePostResponse>()?;
-                    let pretty = serde_json::to_string_pretty(&result)?;
-                    log_to_file(log_file, &format!("POST Response (load_score) for tag {}", guest_tag), &pretty)?;
-                    return Ok(result);
+                    return Ok(resp.json::<LoadScorePostResponse>()?);
                 }
                 reqwest::StatusCode::CONFLICT => {
-                    let message = resp.text().unwrap_or_else(|_| "Score already loaded".to_string());
-                    log_to_file(log_file, &format!("Score already loaded for tag {}", guest_tag), &message)?;
                     return Ok(LoadScorePostResponse {
                         data: serde_json::json!({ "message": "Score already loaded" }),
                     });
@@ -414,18 +375,13 @@ fn post_multiple_guests_and_scores(
     checkpoint_id: &str,
     score: &str,
     max_retries: u32,
-    log_file: &mut File,
     ui_handle: Weak<AppWindow>,
 ) -> Result<(Vec<GuestsPostResponse>, Vec<LoadScorePostResponse>), AppError> {
     let mut guests_responses = Vec::new();
     let mut load_score_responses = Vec::new();
 
-    log_to_file(log_file, "Processing guest tags", &format!("Total tags: {}", guest_tags.len()))?;
-
     for guest_tag in guest_tags {
-        log_to_file(log_file, "Processing guest_tag", guest_tag)?;
-
-        let guests_response = post_guests(client, access_token, guest_tag, max_retries, log_file)?;
+        let guests_response = post_guests(client, access_token, guest_tag, max_retries)?;
         let username = guests_response.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
         if !username.is_empty() {
             let weak = ui_handle.clone();
@@ -445,7 +401,6 @@ fn post_multiple_guests_and_scores(
             guest_tag,
             score,
             max_retries,
-            log_file,
         )?;
         load_score_responses.push(load_score_response);
     }
@@ -476,37 +431,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize HTTP client
     let client = Client::new();
 
-    // Create log file with timestamp
-    let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let log_filename = format!("api_log_{}.txt", timestamp);
-    let mut log_file = File::create(&log_filename)?;
-
     // Set up UI callback to handle score submission
-    let ui_handle_clone = ui_handle.clone();
     ui.on_submit_score({
         let access_token = access_token.clone();
         let slug = slug.clone();
         let client = client.clone();
+        let ui_handle_clone = ui_handle.clone();
         move |score| {
             let ui_handle = ui_handle_clone.clone();
             let access_token = access_token.clone();
             let slug = slug.clone();
             let score = score.to_string();
             let client = client.clone();
-            let mut log_file = File::create(format!("api_log_{}.txt", Local::now().format("%Y%m%d_%H%M%S"))).unwrap();
 
-            slint::invoke_from_event_loop(move || {
-                let guest_tag = if let Some(ui) = ui_handle.upgrade() {
-                    let card_uid = ui.get_card_uid();
-                    if card_uid.starts_with("Card UID: ") {
-                        card_uid[9..].to_string()
-                    } else {
-                        String::new()
-                    }
+            // Extract UI properties before entering the event loop closure
+            let (guest_tag, trivia_name) = if let Some(ui) = ui_handle.upgrade() {
+                let card_uid = ui.get_card_uid();
+                let guest_tag = if card_uid.starts_with("Card UID: ") {
+                    card_uid[9..].to_string()
                 } else {
                     String::new()
                 };
+                let trivia_name = ui.get_trivia_name();
+                (guest_tag, trivia_name)
+            } else {
+                (String::new(), SharedString::from(""))
+            };
 
+            slint::invoke_from_event_loop(move || {
                 if guest_tag.is_empty() {
                     show_error(&ui_handle, "No valid card UID detected");
                     return;
@@ -519,28 +471,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
 
-                let post_response = match post_get_by_slug(&client, &access_token, &slug, 3, &mut log_file) {
+                let post_response = match post_get_by_slug(&client, &access_token, &slug, 3) {
                     Ok(resp) => resp,
                     Err(e) => {
                         show_error(&ui_handle, &e.to_string());
                         return;
                     }
                 };
-                log_to_file(&mut log_file, "Checkpoint ID", &post_response.checkpoint.id.to_string())
-                    .unwrap_or_else(|e| eprintln!("Log error: {}", e));
 
                 let event_id = post_response.checkpoint.event_id;
 
-                let trivia_name = ui.get_trivia_name();
                 let mut checkpoint_id = "0".to_string();
-                if trivia_name == "TRIVIA 1"{
+                if trivia_name == "TRIVIA 1" {
                     checkpoint_id = "62".to_string();
                 }
-                if trivia_name == "TRIVIA 2"{
+                if trivia_name == "TRIVIA 2" {
                     checkpoint_id = "63".to_string();
                 }
 
-                if let Err(e) = get_visual(&client, &access_token, event_id, 3, &mut log_file) {
+                if let Err(e) = get_visual(&client, &access_token, event_id, 3) {
                     show_error(&ui_handle, &e.to_string());
                     return;
                 }
@@ -552,7 +501,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     &checkpoint_id,
                     &score,
                     3,
-                    &mut log_file,
                     ui_handle.clone(),
                 ) {
                     show_error(&ui_handle, &e.to_string());
@@ -658,7 +606,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             if let Some(ui) = weak.upgrade() {
                                 ui.set_card_uid(SharedString::from("Waiting for card..."));
                                 ui.set_user_name(SharedString::from(""));
-                                
                             }
                         }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                     }
