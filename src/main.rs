@@ -6,9 +6,7 @@ use thiserror::Error;
 use std::thread;
 use std::time::Duration;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
-use slint::{SharedString, Weak,Model};
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc;
+use slint::{SharedString, Weak};
 slint::include_modules!();
 
 // Configuration struct for NFC
@@ -71,7 +69,7 @@ struct LoadScorePostPayload {
 }
 
 // Define the expected POST response structure for the get_by_slug endpoint
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct Checkpoint {
     event_id: i32,
     id: i32,
@@ -81,23 +79,37 @@ struct Checkpoint {
     slug: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct PostResponse {
     checkpoint: Checkpoint,
 }
 
 // Define the expected POST response structure for the guests endpoint
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct Guest {
     name: String,
+    tag: Option<String>, // Explicitly map the tag field
     #[serde(flatten)]
     other: serde_json::Value,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct GuestsPostResponse {
     guests: Vec<Guest>,
 }
+
+// Alternative struct if the response is nested (e.g., {"data": {"guests": [...]}})
+/*
+#[derive(Deserialize, Serialize, Debug)]
+struct GuestsPostResponse {
+    data: GuestsData,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct GuestsData {
+    guests: Vec<Guest>,
+}
+*/
 
 // Define the expected POST response structure for the load_score endpoint
 #[derive(Deserialize, Serialize, Debug)]
@@ -277,11 +289,13 @@ fn post_guests(
         match response {
             Ok(resp) => match resp.status() {
                 reqwest::StatusCode::OK => {
-                    let json_response = resp.json::<GuestsPostResponse>()?;
-                    println!(
-                        "post_guests response: {}",
-                        serde_json::to_string_pretty(&json_response).unwrap_or_else(|_| "Failed to serialize response".to_string())
-                    );
+                    let text = resp.text()?;
+                    println!("Raw JSON response: {}", text);
+                    let json_response = serde_json::from_str::<GuestsPostResponse>(&text).map_err(|e| {
+                        println!("Deserialization error: {}", e);
+                        AppError::Json(e)
+                    })?;
+                    println!("Deserialized response: {:?}", json_response);
                     return Ok(json_response);
                 }
                 status @ (reqwest::StatusCode::TOO_MANY_REQUESTS | reqwest::StatusCode::SERVICE_UNAVAILABLE) => {
@@ -406,7 +420,6 @@ fn post_multiple_guests_and_scores(
     let mut guests_responses = Vec::new();
     let mut load_score_responses = Vec::new();
 
-    // Convert checkpoint_id to i32
     let checkpoint_id: i32 = checkpoint_id.parse().map_err(|_| {
         AppError::InvalidInput("Checkpoint ID must be a valid integer".to_string())
     })?;
@@ -457,7 +470,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // API configuration
     let access_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjMwLCJyb2xlIjoiY29udHJvbCJ9.OjbB_aLB6KnBXEeMpKP9HZMMN73zm_-0mBuvNyDvSpI".to_string();
-    let slug = "checkpoint-prueba-546".to_string();
+    let slug ="checkpoint-prueba-546".to_string();
 
     // Initialize HTTP client
     let client = Client::new();
@@ -502,8 +515,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Retrieved gettag: {}", gettag);
 
             // Step 3: Map trivia_name to checkpoint_id
-            
-             let checkpoint_id = match valueoftrivia.as_str() {
+            let checkpoint_id = match valueoftrivia.as_str() {
                 "TRIVIA 1" => "62",
                 "TRIVIA 2" => "63",
                 _ => {
@@ -598,20 +610,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                                 if uid_str != last_uid {
                                     last_uid = uid_str.clone();
-                                    let weak = ui_handle.clone();
-                                    let msg = format!("Card UID: {}", uid_str);
-                                    let client1 = client.clone();
-                                    let access_token1 = access_token.clone();
-                                    let response = post_guests(&client1, &access_token1, &uid_str, 3).ok();
+                                    let response = match post_guests(&client, &access_token, &uid_str, 3) {
+                                        Ok(resp) => resp,
+                                        Err(e) => {
+                                            show_error(&ui_handle, &format!("Failed to fetch guests: {}", e));
+                                            return;
+                                        }
+                                    };
+
+                                    println!("Guests response: {:?}", response);
+
                                     let mut username = String::new();
                                     let mut tag = String::new();
-                                    if let Some(resp) = response {
-                                        username = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
-                                        tag = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
-                                        println!("tag found: {}", tag);
-                                        
+
+                                    if let Some(guest) = response.guests.get(0) {
+                                        username = guest.name.clone();
+                                        tag = guest.tag.clone().unwrap_or_default();
+                                        if tag.is_empty() {
+                                            show_error(&ui_handle, "Guest tag is missing in response");
+                                        } else {
+                                            println!("Guest: {}, Tag: {}", username, tag);
+                                        }
+                                    } else {
+                                        show_error(&ui_handle, "No guests found in response");
                                     }
 
+                                    let weak = ui_handle.clone();
                                     slint::invoke_from_event_loop(move || {
                                         if let Some(ui) = weak.upgrade() {
                                             ui.set_user_name(SharedString::from(username));
