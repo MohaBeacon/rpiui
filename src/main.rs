@@ -493,6 +493,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             println!("Retrieved trivia_name: {}", trivia_name);
             let valueoftrivia = trivia_name.clone();
+            let gettag = if let Some(ui) = ui_handle.upgrade() {
+                let tag = ui.get_card_uid().to_string();
+                tag
+            } else {
+                String::new()
+            };
 
             // Step 3: Map trivia_name to checkpoint_id
             let checkpoint_id = match valueoftrivia.as_str() {
@@ -511,7 +517,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
             println!("Mapped checkpoint_id: {}", checkpoint_id);
-            let guest_tags = "53C84307400001".to_string();
+            let guest_tags = gettag.clone();
 
             let score_response = match post_load_score(
                 &client,
