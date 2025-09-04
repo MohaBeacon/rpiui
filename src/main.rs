@@ -499,6 +499,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 String::new()
             };
+            println!("Retrieved gettag: {}", gettag);
 
             // Step 3: Map trivia_name to checkpoint_id
             
@@ -599,7 +600,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     last_uid = uid_str.clone();
                                     let weak = ui_handle.clone();
                                     let msg = format!("Card UID: {}", uid_str);
-                                    println!("{}", msg);
                                     let client1 = client.clone();
                                     let access_token1 = access_token.clone();
                                     let response = post_guests(&client1, &access_token1, &uid_str, 3).ok();
@@ -608,6 +608,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     if let Some(resp) = response {
                                         username = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
                                         tag = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
+                                        println!("tag found: {}", tag);
                                         
                                     }
 
@@ -645,7 +646,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let weak = ui_handle.clone();
                         slint::invoke_from_event_loop(move || {
                             if let Some(ui) = weak.upgrade() {
-                                ui.set_card_uid(SharedString::from("Waiting for card..."));
                                 ui.set_user_name(SharedString::from(""));
                             }
                         }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
