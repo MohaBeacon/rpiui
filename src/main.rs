@@ -6,7 +6,7 @@ use thiserror::Error;
 use std::thread;
 use std::time::Duration;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
-use slint::{SharedString, Weak};
+use slint::{SharedString, Weak,Model};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 slint::include_modules!();
@@ -501,9 +501,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             // Step 3: Map trivia_name to checkpoint_id
-            let checkpoint_id = match valueoftrivia.as_str() {
-                "TRIVIA 1" => "4",
-                "TRIVIA 2" => "3",
+            
+             let checkpoint_id = match valueoftrivia.as_str() {
+                "TRIVIA 1" => "62",
+                "TRIVIA 2" => "63",
                 _ => {
                     show_error(&ui_handle, "Invalid trivia name");
                     return;
@@ -517,7 +518,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
             println!("Mapped checkpoint_id: {}", checkpoint_id);
-            let guest_tags = gettag.clone();
+
+            let binding = gettag.clone();
+            let guest_tags = binding.as_str();
 
             let score_response = match post_load_score(
                 &client,
