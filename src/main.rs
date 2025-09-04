@@ -7,7 +7,8 @@ use std::thread;
 use std::time::Duration;
 use pcsc::{Context, Scope, ShareMode, Protocols, Error};
 use slint::{SharedString, Weak};
-
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
 slint::include_modules!();
 
 // Configuration struct for NFC
@@ -61,10 +62,10 @@ struct GuestsPostPayload {
 }
 
 // Define the POST request payload for the load_score endpoint
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct LoadScorePostPayload {
     access_token: String,
-    checkpoint_id: String,
+    checkpoint_id: i32,
     guest_tag: String,
     score: String,
 }
@@ -99,7 +100,7 @@ struct GuestsPostResponse {
 }
 
 // Define the expected POST response structure for the load_score endpoint
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct LoadScorePostResponse {
     #[serde(flatten)]
     data: serde_json::Value,
@@ -319,7 +320,7 @@ fn post_guests(
 fn post_load_score(
     client: &Client,
     access_token: &str,
-    checkpoint_id: &str,
+    checkpoint_id: i32,
     guest_tag: &str,
     score: &str,
     max_retries: u32,
@@ -327,7 +328,7 @@ fn post_load_score(
     let post_url = "https://wonderlab.events/controlacceso/v2/api/checkpoints/load_score";
     let payload = LoadScorePostPayload {
         access_token: access_token.to_string(),
-        checkpoint_id: checkpoint_id.to_string(),
+        checkpoint_id,
         guest_tag: guest_tag.to_string(),
         score: score.to_string(),
     };
@@ -405,6 +406,11 @@ fn post_multiple_guests_and_scores(
     let mut guests_responses = Vec::new();
     let mut load_score_responses = Vec::new();
 
+    // Convert checkpoint_id to i32
+    let checkpoint_id: i32 = checkpoint_id.parse().map_err(|_| {
+        AppError::InvalidInput("Checkpoint ID must be a valid integer".to_string())
+    })?;
+
     for guest_tag in guest_tags {
         let guests_response = post_guests(client, access_token, guest_tag, max_retries)?;
         let username = guests_response.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
@@ -462,81 +468,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let slug = slug.clone();
         let client = client.clone();
         let ui_handle_clone = ui_handle.clone();
-        move |score| {
+
+        move |score: SharedString| {
+            println!("Score to submit: {}", score);
             let ui_handle = ui_handle_clone.clone();
             let access_token = access_token.clone();
             let slug = slug.clone();
             let score = score.to_string();
             let client = client.clone();
 
-            // Extract UI properties before entering the event loop closure
-            let (guest_tag, trivia_name) = if let Some(ui) = ui_handle.upgrade() {
-                let card_uid = ui.get_card_uid();
-                let guest_tag = if card_uid.starts_with("Card UID: ") {
-                    card_uid[9..].to_string()
-                } else {
-                    String::new()
-                };
-                let trivia_name = ui.get_trivia_name();
-                (guest_tag, trivia_name)
-            } else {
-                (String::new(), SharedString::from(""))
+            // Step 1: Fetch post_get_by_slug response
+            let post_response = match post_get_by_slug(&client, &access_token, &slug, 3) {
+                Ok(resp) => resp,
+                Err(e) => {
+                    show_error(&ui_handle, &format!("Failed to fetch checkpoint: {}", e));
+                    return;
+                }
             };
+            let trivia_name = if let Some(ui) = ui_handle.upgrade() {
+                let name = ui.get_trivia_name().to_string();
+                name
+            } else {
+                String::new()
+            };
+            println!("Retrieved trivia_name: {}", trivia_name);
+            let valueoftrivia = trivia_name.clone();
 
-            slint::invoke_from_event_loop(move || {
-                if guest_tag.is_empty() {
-                    show_error(&ui_handle, "No valid card UID detected");
+            // Step 3: Map trivia_name to checkpoint_id
+            let checkpoint_id = match valueoftrivia.as_str() {
+                "TRIVIA 1" => "4",
+                "TRIVIA 2" => "3",
+                _ => {
+                    show_error(&ui_handle, "Invalid trivia name");
                     return;
                 }
-
-                let guest_tags = vec![guest_tag];
-
-                if let Err(e) = validate_inputs(&access_token, &slug, &guest_tags, &score) {
-                    show_error(&ui_handle, &e.to_string());
+            };
+            let checkpoint_id: i32 = match checkpoint_id.parse() {
+                Ok(id) => id,
+                Err(_) => {
+                    show_error(&ui_handle, "Checkpoint ID must be a valid integer");
                     return;
                 }
+            };
+            println!("Mapped checkpoint_id: {}", checkpoint_id);
+            let guest_tags = "53C84307400001".to_string();
 
-                let post_response = match post_get_by_slug(&client, &access_token, &slug, 3) {
-                    Ok(resp) => resp,
-                    Err(e) => {
-                        show_error(&ui_handle, &e.to_string());
-                        return;
-                    }
-                };
-
-                let event_id = post_response.checkpoint.event_id;
-
-                let mut checkpoint_id = "0".to_string();
-                if trivia_name == "TRIVIA 1" {
-                    checkpoint_id = "62".to_string();
+            let score_response = match post_load_score(
+                &client,
+                &access_token,
+                checkpoint_id,
+                &guest_tags,
+                &score,
+                3,
+            ) {
+                Ok(resp) => {
+                    println!("post_load_score response: {:?}", resp);
+                    resp
                 }
-                if trivia_name == "TRIVIA 2" {
-                    checkpoint_id = "63".to_string();
-                }
-
-                if let Err(e) = get_visual(&client, &access_token, event_id, 3) {
-                    show_error(&ui_handle, &e.to_string());
+                Err(e) => {
+                    println!("post_load_score error: {:?}", e);
+                    show_error(&ui_handle, &format!("Failed to load score: {:?}", e));
                     return;
                 }
-
-                if let Err(e) = post_multiple_guests_and_scores(
-                    &client,
-                    &access_token,
-                    &guest_tags,
-                    &checkpoint_id,
-                    &score,
-                    3,
-                    ui_handle.clone(),
-                ) {
-                    show_error(&ui_handle, &e.to_string());
-                    return;
-                }
-
-                if let Some(ui) = ui_handle.upgrade() {
-                    ui.set_card_uid(SharedString::from("Score submitted successfully"));
-                    ui.set_current_screen(SharedString::from("welcome"));
-                }
-            }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
+            };
+            println!("post_load_score completed: {:?}", score_response);
         }
     });
 
@@ -596,9 +591,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     last_uid = uid_str.clone();
                                     let weak = ui_handle.clone();
                                     let msg = format!("Card UID: {}", uid_str);
+                                    let client1 = client.clone();
+                                    let access_token1 = access_token.clone();
+                                    let response = post_guests(&client1, &access_token1, &uid_str, 3).ok();
+                                    let mut username = String::new();
+                                    if let Some(resp) = response {
+                                        username = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
+                                        if !username.is_empty() {
+                                            username = "".to_string();
+                                        }
+                                    }
+
                                     slint::invoke_from_event_loop(move || {
                                         if let Some(ui) = weak.upgrade() {
                                             ui.set_card_uid(SharedString::from(msg));
+                                            ui.set_user_name(SharedString::from(username));
                                             ui.set_current_screen(SharedString::from("welcome"));
                                         }
                                     }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
