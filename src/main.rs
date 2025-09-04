@@ -604,11 +604,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     let access_token1 = access_token.clone();
                                     let response = post_guests(&client1, &access_token1, &uid_str, 3).ok();
                                     let mut username = String::new();
+                                    let mut tag = String::new();
                                     if let Some(resp) = response {
                                         username = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
-                                        if !username.is_empty() {
-                                            username = "".to_string();
-                                        }
+                                        tag = resp.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
+                                        
                                     }
 
                                     slint::invoke_from_event_loop(move || {
@@ -616,6 +616,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                             ui.set_card_uid(SharedString::from(msg));
                                             ui.set_user_name(SharedString::from(username));
                                             ui.set_current_screen(SharedString::from("welcome"));
+                                            ui.set_card_uid(SharedString::from(tag));
                                         }
                                     }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                                 }
