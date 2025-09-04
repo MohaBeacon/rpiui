@@ -9,9 +9,8 @@ component AppButton inherits Rectangle {
     background: #FF3900; // Default to orange
     callback clicked;
     border-radius: 30px;
-    border-width: 1px;
+    border-width: 50px;
     border-color: transparent;
-    min-height: 40px;
 
     Text {
         text: root.text;
@@ -40,7 +39,7 @@ component TriviaScreen inherits VerticalBox {
     in property <[int]> correct_answers;
     callback return-to-start;
     callback return-to-quiz-select;
-    callback submit_score(int); // New callback to submit score
+    callback submit_score(string); // New callback to submit score
 
     alignment: center;
     in-out property <int> score: 0;
@@ -56,7 +55,7 @@ component TriviaScreen inherits VerticalBox {
     }
 
     if !quiz_finished: VerticalBox {
-        spacing: 10px;
+        spacing: 50px;
         alignment: center;
         Text {
             text: questions[current_question];
@@ -71,8 +70,7 @@ component TriviaScreen inherits VerticalBox {
         for answer[idx] in answers[current_question] : AppButton {
             text: answer;
             enabled: !answered;
-            width: 80%;
-            min-height: 60px;
+            width: 100%;
             font-weight: 100;
             text-color: white;
             background: black;
@@ -169,30 +167,27 @@ component TriviaScreen inherits VerticalBox {
 
 export component AppWindow inherits Window {
     no-frame: true;
-    width: 1080px;
-    height: 1980px;
+    width: 1200px;
+    height: 1200px;
     in-out property <string> card_uid: "Waiting for card...";
     in-out property <string> user_name: "";
-    in-out property <string> current_screen: "preintro"; // "preintro", "welcome", "trivia1", "trivia2"
+    in-out property <string> current_screen: "welcome"; // "preintro", "welcome", "trivia1", "trivia2"
     in-out property <string> trivia_name;
 
-    callback submit_score(int);
-
-    
+    callback submit_score(string);
 
     Rectangle {
-        width: 1080px;
-        height: 1980px;
+        width: 1200px;
+        height: 1200px;
         background: #FF3900;
 
         // Preintro page
-        if current_screen == "preintro": HorizontalLayout {
-            width: 1080px;
-            height: 1980px;
-            spacing: 15px;
+        if current_screen == "preintro": VerticalLayout {
+            width: 1200px;
+            height: 800px;
+            spacing: 100px;
             padding: 20px;
             alignment: center;
-   
 
             Rectangle {
                 width: parent.width;
@@ -209,13 +204,13 @@ export component AppWindow inherits Window {
 
             Rectangle {
                 width: parent.width;
-                height: 150px;
+                height: 100px;
                 background: #FF3900;
                 Text {
+                    text: "¡PARTICIPÁ DE LAS TRIVIAS Y SUMÁ PUNTOS!";
                     font-size: 40px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
-                    text: "¡PARTICIPÁ DE LAS TRIVIAS Y SUMÁ PUNTOS!";
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
@@ -230,10 +225,10 @@ export component AppWindow inherits Window {
                 height: 100px;
                 background: #FF3900;
                 Text {
-                    //ont-size: 40px;
+                    text: "ESCANEÁ TU PULSERA PARA PARTICIPAR";
+                    font-size: 40px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
-                    text: "ESCANEÁ TU PULSERA PARA PARTICIPAR";
                     color: white;
                     wrap: word-wrap;
                     width: 50%;
@@ -244,9 +239,10 @@ export component AppWindow inherits Window {
             }
 
             Rectangle {
+                width: parent.width;
+                height: 200px;
+                background: #FF3900;
                 Path {
-                    x: (parent.width - self.width) / 2;
-                    y: 1000px;
                     width: 180px;
                     height: 150px;
                     commands: "M11 5V-14A1 1 0 007-14V5L3 0A1 1 0 001 2L8 10C9 11 9 11 10 10L17 2A1 1 0 0015 0L11 5";
@@ -254,6 +250,8 @@ export component AppWindow inherits Window {
                     stroke-width: 10px;
                     fill: black;
                     stroke-line-cap: round;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
                 }
             }
         }
@@ -297,16 +295,15 @@ export component AppWindow inherits Window {
                     font-family: "Montserrat";
                     font-weight: 800;
                 }
-                
             }
             Rectangle {
                 width: parent.width;
                 height: 100px;
                 background: #FF3900;
                 Text {
-                    text:"ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
+                    text: "ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
                     font-size: 30px;
-                    horizontal-alignment: center;
+                    horizontal-alignment: TextHorizontalAlignment.left;
                     vertical-alignment: center;
                     color: white;
                     wrap: word-wrap;
@@ -329,10 +326,10 @@ export component AppWindow inherits Window {
                         alignment: center;
                         VerticalLayout {
                             alignment: center;
-                            spacing: 15px;
+                            spacing: 50px;
                             AppButton {
                                 text: "TU CALLROOM FAVORITO";
-                                width: 300px;
+                                width: 600px;
                                 height: 80px;
                                 font-weight: 400;
                                 background: black;
@@ -345,7 +342,7 @@ export component AppWindow inherits Window {
                             }
                             AppButton {
                                 text: "TU SALA FAVORITA";
-                                width: 300px;
+                                width: 600px;
                                 height: 80px;
                                 font-weight: 400;
                                 background: black;
@@ -390,7 +387,7 @@ export component AppWindow inherits Window {
                     correct_answers: [1, 0, 0, 0, 1];
                     return-to-start => { current_screen = "preintro"; }
                     return-to-quiz-select => { current_screen = "welcome"; }
-
+                    submit_score(score) => { root.submit_score(score); }
                 }
 
                 if current_screen == "trivia2": TriviaScreen {
@@ -409,6 +406,7 @@ export component AppWindow inherits Window {
                     correct_answers: [0, 0, 0, 1];
                     return-to-start => { current_screen = "preintro"; }
                     return-to-quiz-select => { current_screen = "welcome"; }
+                    submit_score(score) => { root.submit_score(score); }
                 }
             }
         }
