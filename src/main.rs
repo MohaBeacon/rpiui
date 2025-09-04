@@ -519,8 +519,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             println!("Mapped checkpoint_id: {}", checkpoint_id);
 
-            let binding = gettag.clone();
-            let guest_tags = binding.as_str();
+            let guest_tags = gettag.clone;
 
             let score_response = match post_load_score(
                 &client,
