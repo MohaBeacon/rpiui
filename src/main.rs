@@ -493,7 +493,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             println!("Retrieved trivia_name: {}", trivia_name);
             let valueoftrivia = trivia_name.clone();
-            let gettag = if let Some(ui) = ui_handle.upgrade() {
+            let mut gettag = if let Some(ui) = ui_handle.upgrade() {
                 let tag = ui.get_card_uid().to_string();
                 tag
             } else {
@@ -519,7 +519,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             println!("Mapped checkpoint_id: {}", checkpoint_id);
 
-            let guest_tags = gettag.clone;
+            let guest_tags = &gettag;
 
             let score_response = match post_load_score(
                 &client,
