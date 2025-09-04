@@ -600,6 +600,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     last_uid = uid_str.clone();
                                     let weak = ui_handle.clone();
                                     let msg = format!("Card UID: {}", uid_str);
+                                    println!("{}", msg);
                                     let client1 = client.clone();
                                     let access_token1 = access_token.clone();
                                     let response = post_guests(&client1, &access_token1, &uid_str, 3).ok();
@@ -613,7 +614,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                                     slint::invoke_from_event_loop(move || {
                                         if let Some(ui) = weak.upgrade() {
-                                            ui.set_card_uid(SharedString::from(msg));
                                             ui.set_user_name(SharedString::from(username));
                                             ui.set_current_screen(SharedString::from("welcome"));
                                             ui.set_card_uid(SharedString::from(tag));
