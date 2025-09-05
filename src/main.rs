@@ -427,7 +427,7 @@ fn post_multiple_guests_and_scores(
     for guest_tag in guest_tags {
         let guests_response = post_guests(client, access_token, guest_tag, max_retries)?;
         let username = guests_response.guests.get(0).map(|g| g.name.clone()).unwrap_or_default();
-        if !username.is_empty() {
+        if username.is_empty() {
             let weak = ui_handle.clone();
             let username = SharedString::from(username);
             slint::invoke_from_event_loop(move || {
