@@ -14,7 +14,38 @@ component AppButton inherits Rectangle {
 
     Text {
         text: root.text;
-        font-size: 36px;
+        font-size: 52.3px;
+        color: root.text-color;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        wrap: word-wrap;
+        width: 100%;
+        font-family: "Montserrat";
+        font-weight: root.font-weight;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component AnswerButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <color> text-color: white;
+    in property <int> font-weight: 400;
+    background: #FF3900; // Default to orange
+    callback clicked;
+    border-radius: 30px;
+    border-width: 50px;
+    border-color: transparent;
+
+    Text {
+        text: root.text;
+        font-size: 25.5px;
         color: root.text-color;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -54,7 +85,7 @@ component TriviaScreen inherits VerticalBox {
         alignment: center;
         Text {
             text: questions[current_question];
-            font-size: 40px;
+            font-size: 45px;
             font-weight: 800;
             horizontal-alignment: center;
             wrap: word-wrap;
@@ -62,7 +93,7 @@ component TriviaScreen inherits VerticalBox {
             font-family: "Montserrat";
             color: white;
         }
-        for answer[idx] in answers[current_question] : AppButton {
+        for answer[idx] in answers[current_question] : AnswerButton {
             text: answer;
             enabled: !answered;
             width: 100%;
@@ -93,7 +124,7 @@ component TriviaScreen inherits VerticalBox {
         alignment: center;
         Text {
             text: "\{score/5} RESPUESTAS CORRECTAS";
-            font-size: 40px;
+            font-size: 45px;
             horizontal-alignment: center;
             wrap: word-wrap;
             width: 50%;
@@ -102,7 +133,7 @@ component TriviaScreen inherits VerticalBox {
         Text {
             text: "SUMASTE";
             color: white;
-            font-size: 30px;
+            font-size: 45px;
             horizontal-alignment: center;
             wrap: word-wrap;
             width: 50%;
@@ -120,7 +151,7 @@ component TriviaScreen inherits VerticalBox {
         Text {
             text: "PUNTOS";
             color: white;
-            font-size: 30px;
+            font-size: 45px;
             horizontal-alignment: center;
             wrap: word-wrap;
             width: 50%;
@@ -129,7 +160,7 @@ component TriviaScreen inherits VerticalBox {
         Rectangle {
             Text {
                 text: "¡GRACIAS POR PARTICIPAR!";
-                font-size: 40px;
+                font-size: 45px;
                 horizontal-alignment: center;
                 wrap: word-wrap;
                 width: 50%;
@@ -139,7 +170,7 @@ component TriviaScreen inherits VerticalBox {
         AppButton {
             text: "PARTICIPAR DE OTRA TRIVIA";
             width: 80%;
-            min-height: 60px;
+            min-height: 30px;
             background: transparent;
             text-color: black;
             x: (parent.width - self.width) / 2;
@@ -207,7 +238,7 @@ export component AppWindow inherits Window {
                 background: #FF3900;
                 Text {
                     text: "¡PARTICIPÁ DE LAS TRIVIAS Y SUMÁ PUNTOS!";
-                    font-size: 40px;
+                    font-size: 41.3px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
                     color: white;
@@ -225,7 +256,7 @@ export component AppWindow inherits Window {
                 background: #FF3900;
                 Text {
                     text: "ESCANEÁ TU PULSERA PARA PARTICIPAR";
-                    font-size: 40px;
+                    font-size: 41.3px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
                     color: white;
@@ -285,7 +316,7 @@ export component AppWindow inherits Window {
                     text: current_screen == "welcome" ? "WELCOME \{user_name}" :
                           current_screen == "trivia1" ? "TRIVIA 1" :
                           "TRIVIA 2";
-                    font-size: 50px;
+                    font-size: current_screen == "welcome" ? 75px : 45px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
                     color: black;
@@ -302,12 +333,12 @@ export component AppWindow inherits Window {
                 background: #FF3900;
                 Text {
                     text: "ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
-                    font-size: 30px;
+                    font-size: 41.3px;
                     horizontal-alignment: TextHorizontalAlignment.left;
                     vertical-alignment: center;
                     color: white;
                     wrap: word-wrap;
-                    width: 50%;
+                    width:80%;
                     font-family: "Montserrat";
                     font-weight: 400;
                 }
