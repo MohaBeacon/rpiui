@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to automatically install Rust and required dependencies
+# Script to automatically install Rust, git, and required dependencies
 
 # Check if script is run as root for package installation
 if [ "$EUID" -ne 0 ]; then
@@ -19,8 +19,8 @@ if ! command -v curl &> /dev/null; then
 fi
 
 # Install required dependencies
-echo "Installing libssl-dev, pkgconf, pcscd, pcsc-tools, libccid, pkg-config, libgbm-dev, libxkbcommon-dev, libudev-dev, and libseat-dev..."
-apt-get update && apt-get install -y libssl-dev pkgconf pcscd pcsc-tools libccid pkg-config libgbm-dev libxkbcommon-dev libudev-dev libseat-dev
+echo "Installing git, libssl-dev, pkgconf, pcscd, pcsc-tools, libccid, pkg-config, libgbm-dev, libxkbcommon-dev, libudev-dev, and libseat-dev..."
+apt-get update && apt-get install -y git libssl-dev pkgconf pcscd pcsc-tools libccid pkg-config libgbm-dev libxkbcommon-dev libudev-dev libseat-dev
 if [ $? -ne 0 ]; then
     echo "Error: Failed to install one or more packages."
     exit 1
@@ -40,8 +40,17 @@ source "$HOME/.cargo/env" 2>/dev/null || echo "Warning: Failed to source Rust en
 # Verify installation of Rust
 if command -v rustc &> /dev/null; then
     rustc --version
-    echo "Rust and all dependencies (libssl-dev, pkgconf, pcscd, pcsc-tools, libccid, pkg-config, libgbm-dev, libxkbcommon-dev, libudev-dev, libseat-dev) installed successfully!"
+    echo "Rust, git, and all dependencies (libssl-dev, pkgconf, pcscd, pcsc-tools, libccid, pkg-config, libgbm-dev, libxkbcommon-dev, libudev-dev, libseat-dev) installed successfully!"
 else
     echo "Error: Rust compiler not found after installation."
+    exit 1
+fi
+
+# Verify installation of git
+if command -v git &> /dev/null; then
+    git --version
+    echo "Git is ready to use!"
+else
+    echo "Error: Git not found after installation."
     exit 1
 fi
