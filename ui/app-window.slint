@@ -1,445 +1,81 @@
-import { AboutSlint, Button, VerticalBox } from "std-widgets.slint";
-
-// Reusable button component
-component AppButton inherits Rectangle {
-    in property <string> text;
-    in property <bool> enabled: true;
-    in property <color> text-color: white;
-    in property <int> font-weight: 400;
-    background: #FF3900; // Default to orange
-    callback clicked;
-    border-radius: 30px;
-    border-width: 50px;
-    border-color: transparent;
-
-    Text {
-        text: root.text;
-        font-size: 52.3px;
-        color: root.text-color;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        wrap: word-wrap;
-        width: 100%;
-        font-family: "Montserrat";
-        font-weight: root.font-weight;
-    }
-
-    TouchArea {
-        enabled: root.enabled;
-        clicked => {
-            root.clicked();
-        }
-    }
-}
-
-component AnswerButton inherits Rectangle {
-    in property <string> text;
-    in property <bool> enabled: true;
-    in property <color> text-color: white;
-    in property <int> font-weight: 400;
-    background: #FF3900; // Default to orange
-    callback clicked;
-    border-radius: 30px;
-    border-width: 50px;
-    border-color: transparent;
-
-    Text {
-        text: root.text;
-        font-size: 25.5px;
-        color: root.text-color;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        wrap: word-wrap;
-        width: 100%;
-        font-family: "Montserrat";
-        font-weight: root.font-weight;
-    }
-
-    TouchArea {
-        enabled: root.enabled;
-        clicked => {
-            root.clicked();
-        }
-    }
-}
-
-// TriviaScreen component
-component TriviaScreen inherits VerticalBox {
-    in property <[string]> questions;
-    in property <[[string]]> answers;
-    in property <[int]> correct_answers;
-    callback return-to-start;
-    callback return-to-quiz-select;
-    callback submit_score(string); // New callback to submit score
-
-    alignment: center;
-    in-out property <int> score: 0;
-    in-out property <bool> answered: false;
-    in-out property <int> current_question: 0;
-    in-out property <bool> quiz_finished: false;
-
-    
-
-    if !quiz_finished: VerticalBox {
-        spacing: 50px;
-        alignment: center;
-        Text {
-            text: questions[current_question];
-            font-size: 45px;
-            font-weight: 800;
-            horizontal-alignment: center;
-            wrap: word-wrap;
-            width: 100%;
-            font-family: "Montserrat";
-            color: white;
-        }
-        for answer[idx] in answers[current_question] : AnswerButton {
-            text: answer;
-            enabled: !answered;
-            width: 100%;
-            font-weight: 100;
-            text-color: white;
-            background: black;
-            x: (parent.width - self.width) / 2;
-            clicked => {
-                if (idx == correct_answers[current_question]) {
-                    score += 5;
-                }
-                answered = true;
-                if (current_question < questions.length - 1) {
-                    current_question += 1;
-                    answered = false;
-                } else {
-                    quiz_finished = true;
-                    submit_score(score);
-                }
-            }
-        }
-    }
-
-    if quiz_finished: VerticalBox {
-
-        spacing: 10px;
-        padding: 10px;
-        alignment: center;
-        Text {
-            text: "\{score/5} RESPUESTAS CORRECTAS";
-            font-size: 45px;
-            horizontal-alignment: center;
-            wrap: word-wrap;
-            width: 50%;
-            font-weight: 800;
-        }
-        Text {
-            text: "SUMASTE";
-            color: white;
-            font-size: 45px;
-            horizontal-alignment: center;
-            wrap: word-wrap;
-            width: 50%;
-            font-weight: 800;
-        }
-        Text {
-            text: "\{score}";
-            color: white;
-            font-size: 60px;
-            horizontal-alignment: center;
-            wrap: word-wrap;
-            width: 50%;
-            font-weight: 700;
-        }
-        Text {
-            text: "PUNTOS";
-            color: white;
-            font-size: 45px;
-            horizontal-alignment: center;
-            wrap: word-wrap;
-            width: 50%;
-            font-weight: 800;
-        }
-        Rectangle {
-            Text {
-                text: "¡GRACIAS POR PARTICIPAR!";
-                font-size: 45px;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 50%;
-                font-weight: 800;
-            }
-        }
-        AppButton {
-            text: "PARTICIPAR DE OTRA TRIVIA";
-            width: 80%;
-            min-height: 30px;
-            background: transparent;
-            text-color: black;
-            x: (parent.width - self.width) / 2;
-            clicked => {
-                root.return-to-quiz-select();
-            }
-        }
-        AppButton {
-            text: "VOLVER AL INICIO";
-            width: 80%;
-            min-height: 60px;
-            background: transparent;
-            text-color: black;
-            x: (parent.width - self.width) / 2;
-            clicked => {
-                root.return-to-start();
-            }
-        }
-    }
-}
+import { VerticalBox } from "std-widgets.slint";
+import { PreintroScreen } from "preintro.slint";
+import { WelcomeScreen } from "welcome.slint";
+import { TriviaScreen } from "trivia_screen.slint";
 
 export component AppWindow inherits Window {
     no-frame: true;
-    width: 1080px;
-    height: 1980px;
+    preferred-width: 1080px;
+    preferred-height: 1980px;
+    background: #FF3900;
+
     in-out property <string> card_uid: "";
     in-out property <string> user_name: "";
-    in-out property <string> current_screen: "preintro"; // "preintro", "welcome", "trivia1", "trivia2"
+    in-out property <string> current_screen: "welcome";
     in-out property <string> trivia_name;
-    background: #FF3900;
-   
-
-
     callback submit_score(string);
 
-    Rectangle {
-        width: 1080px;
-        height: 1980px;
-        background: #FF3900;
+    // Define arrays explicitly to ensure integer type
+    property <[int]> trivia1_correct_answers: [1, 0, 0, 0, 1];
+    property <[int]> trivia2_correct_answers: [0, 0, 0, 1];
 
-        // Preintro page
-        if current_screen == "preintro": VerticalLayout {
-            width: 1080px;
-            height: 1600px;
-            spacing: 100px;
-            padding: 20px;
-            alignment: center;
+    VerticalBox {
+        width: 100%;
 
-            Rectangle {
-                width: parent.width;
-                height: 200px;
-                background: #FF3900;
-                Image {
-                    source: @image-url("../assets/logo-allhands.png");
-                    width: 800px;
-                    height: 200px;
-                    x: (parent.width - self.width) / 2;
-                    y: (parent.height - self.height) / 2;
-                }
-            }
-
-            Rectangle {
-                width: parent.width;
-                height: 100px;
-                background: #FF3900;
-                Text {
-                    text: "¡PARTICIPÁ DE LAS TRIVIAS Y SUMÁ PUNTOS!";
-                    font-size: 41.3px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                    color: white;
-                    wrap: word-wrap;
-                    width: 50%;
-                    x: (parent.width - self.width) / 2;
-                    font-family: "Montserrat";
-                    font-weight: 800;
-                }
-            }
-
-            Rectangle {
-                width: parent.width;
-                height: 100px;
-                background: #FF3900;
-                Text {
-                    text: "ESCANEÁ TU PULSERA PARA PARTICIPAR";
-                    font-size: 41.3px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                    color: white;
-                    wrap: word-wrap;
-                    width: 50%;
-                    x: (parent.width - self.width) / 2;
-                    font-family: "Montserrat";
-                    font-weight: 800;
-                }
-            }
-
-            Rectangle {
-                width: parent.width;
-                height: 200px;
-                background: #FF3900;
-                Path {
-                    width: 180px;
-                    height: 150px;
-                    commands: "M11 5V-14A1 1 0 007-14V5L3 0A1 1 0 001 2L8 10C9 11 9 11 10 10L17 2A1 1 0 0015 0L11 5";
-                    stroke: black;
-                    stroke-width: 10px;
-                    fill: black;
-                    stroke-line-cap: round;
-                    x: (parent.width - self.width) / 2;
-                    y: (parent.height - self.height) / 2;
-                }
-            }
-              
+        if current_screen == "preintro": PreintroScreen {
+            width: 100%;
+            height: 100%;
         }
 
-        // Main app (welcome and trivia screens)
-        if current_screen != "preintro": VerticalLayout {
-            width: 1200px;
-            height: 800px;
-            spacing: 15px;
-            padding: 20px;
-            alignment: center;
-
-            Rectangle {
-                width: parent.width;
-                height: 200px;
-                background: #FF3900;
-                Image {
-                    source: @image-url("../assets/logo-allhands.png");
-                    width: 800px;
-                    height: 200px;
-                    x: (parent.width - self.width) / 2;
-                    y: (parent.height - self.height) / 2;
-                }
+        if current_screen == "welcome": WelcomeScreen {
+            width: 100%;
+            height: 100%;
+            user_name: root.user_name;
+            trivia1_selected => {
+                current_screen = "trivia1";
+                trivia_name = "TRIVIA 1";
             }
-
-            Rectangle {
-                width: parent.width;
-                height: 100px;
-                background: #FF3900;
-                Text {
-                    text: current_screen == "welcome" ? "WELCOME \{user_name}" :
-                          current_screen == "trivia1" ? "TRIVIA 1" :
-                          "TRIVIA 2";
-                    font-size: current_screen == "welcome" ? 75px : 45px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                    color: black;
-                    wrap: word-wrap;
-                    width: 50%;
-                    x: (parent.width - self.width) / 2;
-                    font-family: "Montserrat";
-                    font-weight: 800;
-                }
+            trivia2_selected => {
+                current_screen = "trivia2";
+                trivia_name = "TRIVIA 2";
             }
-            Rectangle {
-                width: parent.width;
-                height: 100px;
-                background: #FF3900;
-                Text {
-                    text: "ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
-                    font-size: 41.3px;
-                    horizontal-alignment: TextHorizontalAlignment.left;
-                    vertical-alignment: center;
-                    color: white;
-                    wrap: word-wrap;
-                    width:80%;
-                    font-family: "Montserrat";
-                    font-weight: 400;
-                }
+            return_to_start => {
+                current_screen = "preintro";
             }
+        }
 
-            Rectangle {
-                width: parent.width;
-                height: 460px;
-                background: #FF3900;
-
-                if current_screen == "welcome": VerticalBox {
-                    spacing: 15px;
-                    padding: 20px;
-                    alignment: center;
-                    HorizontalLayout {
-                        alignment: center;
-                        VerticalLayout {
-                            alignment: center;
-                            spacing: 50px;
-                            AppButton {
-                                text: "TU CALLROOM FAVORITO";
-                                width: 600px;
-                                height: 80px;
-                                font-weight: 400;
-                                background: black;
-                                text-color: white;
-                                x: (parent.width - self.width) / 2;
-                                clicked => {
-                                    current_screen = "trivia1";
-                                    trivia_name = "TRIVIA 1";
-                                }
-                            }
-                            AppButton {
-                                text: "TU SALA FAVORITA";
-                                width: 600px;
-                                height: 80px;
-                                font-weight: 400;
-                                background: black;
-                                text-color: white;
-                                x: (parent.width - self.width) / 2;
-                                clicked => {
-                                    current_screen = "trivia2";
-                                    trivia_name = "TRIVIA 2";
-                                }
-                            }
-
-                            AppButton {
-                                text: "VOLVER AL INICIO";
-                                width: 80%;
-                                min-height: 60px;
-                                background: transparent;
-                                text-color: black;
-                                x: (parent.width - self.width) / 2;
-                                clicked => {
-                                    current_screen = "preintro";
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if current_screen == "trivia1": TriviaScreen {
-                    questions: [
-                        "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
-                        "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
-                        "3. Matador (Mario Kempes) ¿Por qué es recordado Mario “el Matador” Kempes en la historia del fútbol argentino?",
-                        "4. Willy (Guillermo Vilas) ¿Qué logro histórico consiguió Guillermo “Willy” Vilas en el tenis?",
-                        "5. Pelusa (Diego Maradona) ¿Por qué le decían “Pelusa” a Diego Maradona?"
-                    ];
-                    answers: [
-                        ["a) Fue la primera argentina en ganar un Mundial de Hockey sobre Césped", "b) Fue elegida ocho veces la mejor jugadora del mundo por la FIH", "c) Ganó dos medallas de oro olímpicas"],
-                        ["a) Fue el primer argentino en ser campeón de la NBA", "b) Fue el jugador más alto de los San Antonio Spurs", "c) Fue entrenador asistente antes de retirarse"],
-                        ["a) Fue goleador y figura en el Mundial de 1978", "b) Fue el primer argentino en jugar en el Real Madrid", "c) Ganó la Copa América en 1987"],
-                        ["a) Ganó 4 torneos de Grand Slam", "b) Fue número 1 del ranking ATP durante dos años consecutivos", "c) Fue capitán de Copa Davis durante 20 años"],
-                        ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
-                    ];
-                    correct_answers: [1, 0, 0, 0, 1];
-                    return-to-start => { current_screen = "preintro"; }
-                    return-to-quiz-select => { current_screen = "welcome"; }
-                    submit_score(score) => { root.submit_score(score); }
-                }
-
-                if current_screen == "trivia2": TriviaScreen {
-                    questions: [
-                        "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
-                        "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",
-                        "3. Maracaná ¿Qué acontecimiento deportivo marcó al Estadio Maracaná en 1950?",
-                        "4. Las Vegas ¿Qué particularidad hace famosa a Las Vegas en el deporte y el entretenimiento?"
-                    ];
-                    answers: [
-                        ["a) Muhammad Ali peleó contra Joe Frazier en “La Pelea del Siglo” (1971)", "b) Fue sede de la final del Mundial de Fútbol 1994", "c) Allí se disputó el primer Super Bowl"],
-                        ["a) Es el único Grand Slam que se juega sobre césped", "b) Es el torneo más antiguo de tenis en Sudamérica", "c) Fue el primer torneo en permitir raquetas de grafito"],
-                        ["a) La final del Mundial donde Brasil perdió con Uruguay, conocida como el “Maracanazo”", "b) La primera final de Copa Libertadores entre Boca y River", "c) El debut internacional de Pelé"],
-                        ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
-                    ];
-                    correct_answers: [0, 0, 0, 1];
-                    return-to-start => { current_screen = "preintro"; }
-                    return-to-quiz-select => { current_screen = "welcome"; }
-                    submit_score(score) => { root.submit_score(score); }
-                }
-            }
+        if current_screen == "trivia1" || current_screen == "trivia2": TriviaScreen {
+            width: 100%;
+            height: 100%;
+            trivia_name: root.trivia_name;
+            questions: current_screen == "trivia1" ? [
+                "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
+                "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
+                "3. Matador (Mario Kempes) ¿Por qué es recordado Mario “el Matador” Kempes en la historia del fútbol argentino?",
+                "4. Willy (Guillermo Vilas) ¿Qué logro histórico consiguió Guillermo “Willy” Vilas en el tenis?",
+                "5. Pelusa (Diego Maradona) ¿Por qué le decían “Pelusa” a Diego Maradona?"
+            ] : [
+                "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
+                "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",
+                "3. Maracaná ¿Qué acontecimiento deportivo marcó al Estadio Maracaná en 1950?",
+                "4. Las Vegas ¿Qué particularidad hace famosa a Las Vegas en el deporte y el entretenimiento?"
+            ];
+            answers: current_screen == "trivia1" ? [
+                ["a) Fue la primera argentina en ganar un Mundial de Hockey sobre Césped", "b) Fue elegida ocho veces la mejor jugadora del mundo por la FIH", "c) Ganó dos medallas de oro olímpicas"],
+                ["a) Fue el primer argentino en ser campeón de la NBA", "b) Fue el jugador más alto de los San Antonio Spurs", "c) Fue entrenador asistente antes de retirarse"],
+                ["a) Fue goleador y figura en el Mundial de 1978", "b) Fue el primer argentino en jugar en el Real Madrid", "c) Ganó la Copa América en 1987"],
+                ["a) Ganó 4 torneos de Grand Slam", "b) Fue número 1 del ranking ATP durante dos años consecutivos", "c) Fue capitán de Copa Davis durante 20 años"],
+                ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
+            ] : [
+                ["a) Muhammad Ali peleó contra Joe Frazier en “La Pelea del Siglo” (1971)", "b) Fue sede de la final del Mundial de Fútbol 1994", "c) Allí se disputó el primer Super Bowl"],
+                ["a) Es el único Grand Slam que se juega sobre césped", "b) Es el torneo más antiguo de tenis en Sudamérica", "c) Fue el primer torneo en permitir raquetas de grafito"],
+                ["a) La final del Mundial donde Brasil perdió con Uruguay, conocida como el “Maracanazo”", "b) La primera final de Copa Libertadores entre Boca y River", "c) El debut internacional de Pelé"],
+                ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
+            ];
+            correct_answers: current_screen == "trivia1" ? root.trivia1_correct_answers : root.trivia2_correct_answers;
+            return-to-start => { current_screen = "preintro"; }
+            return-to-quiz-select => { current_screen = "welcome"; }
+            submit_score(score) => { root.submit_score(score); }
         }
     }
 }

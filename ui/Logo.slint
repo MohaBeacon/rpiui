@@ -1,0 +1,12 @@
+export component Logo inherits Rectangle {
+    width: 800px; // Set explicit width to match image
+    height: 200px;
+    background: #FF3900;
+    Image {
+        source: @image-url("../assets/logo-allhands.png");
+        width: 800px;
+        height: 200px;
+        x: 0px; // Image aligns to the Rectangle’s top-left
+        y: 0px; // No additional offset within Rectangle
+    }
+}

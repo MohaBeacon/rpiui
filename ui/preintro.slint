@@ -1,0 +1,78 @@
+import { VerticalBox } from "std-widgets.slint";
+import { Logo } from "Logo.slint";
+
+export component PreintroScreen inherits Rectangle {
+    width: 1080px;
+    height: 1980px;
+    background: #FF3900; // Ensure consistent background
+
+    // Logo with absolute positioning
+    Logo {
+        x: (parent.width - 800px) / 2; // Center horizontally
+        y: 20px; // 20px from top
+    }
+
+    // Content in VerticalLayout, starting below logo
+    VerticalLayout {
+        width: parent.width;
+        spacing: 100px;
+        padding: 20px;
+        alignment: center;
+
+        
+
+        // Challenge text
+        Rectangle {
+            width: parent.width;
+            height: 200px;
+            background: #FF3900;
+            Text {
+                text: "¡PARTICIPÁ DE LAS TRIVIAS  Y SUMÁ PUNTOS!";
+                font-size: 40px;
+                font-weight: 800;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: white;
+                wrap: word-wrap;
+                width: 80%;
+                font-family: "Montserrat";
+            }
+        }
+
+        // Instruction text
+        Rectangle {
+            width: parent.width;
+            height: 200px;
+            background: #FF3900;
+            Text {
+                text: "ESCANEÁ TU PULSERA PARA PARTICIPAR ";
+                font-size: 50px;
+                font-weight: 800;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: white;
+                wrap: word-wrap;
+                width: 80%;
+                font-family: "Montserrat";
+            }
+        }
+
+        // Downward arrow
+        Rectangle {
+            width: parent.width;
+            height: 300px;
+            background: #FF3900;
+            Path {
+                width: 100px;
+                height: 100px;
+                commands: "M11 5V-14A1 1 0 007-14V5L3 0A1 1 0 001 2L8 10C9 11 9 11 10 10L17 2A1 1 0 0015 0L11 5";
+                stroke: black;
+                stroke-width: 10px;
+                fill: black;
+                stroke-line-cap: round;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2 + 100px;
+            }
+        }
+    }
+}

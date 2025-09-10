@@ -1,0 +1,110 @@
+import { VerticalBox } from "std-widgets.slint";
+import { AppButton } from "AppButton.slint";
+import { Logo } from "Logo.slint";
+
+export component WelcomeScreen inherits Rectangle {
+    width: 1080px;
+    height: 1980px;
+    background: #FF3900;
+
+    // Logo with absolute positioning
+    Logo {
+        x: (parent.width - 800px) / 2;
+        y: 20px;
+    }
+
+    // Content in VerticalBox, starting below logo
+    VerticalBox {
+        width: parent.width;
+        alignment: center;
+
+     
+
+        // Welcome message
+        Rectangle {
+            width: parent.width;
+            height: 200px;
+            background: #FF3900;
+            Text {
+                text: "WELCOME \{user_name}!";
+                font-size: 60px;
+                font-weight: 800;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: black;
+                wrap: word-wrap;
+                width: 80%;
+                font-family: "Montserrat";
+            }
+        }
+
+        // Intro text
+        Rectangle {
+            width: parent.width;
+            height: 400px;
+            background: #FF3900;
+            Text {
+                text: "¿ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
+                font-size: 50px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: white;
+                wrap: word-wrap;
+                width: 60%;
+                font-family: "Montserrat";
+            }
+        }
+
+        // Buttons layout
+        Rectangle {
+            width: parent.width;
+            height: 400px;
+            background: #FF3900;
+            VerticalBox {
+                spacing: 50px;
+                alignment: center;
+                width: 800px;
+                AppButton {
+                    text: "TU CALLROOM FAVORITO";
+                    width: 800px;
+                    height: 80px;
+                    font-weight: 200;
+                    background: black;
+                    text-color: white;
+                    clicked => { root.trivia1_selected(); }
+                }
+                AppButton {
+                    text: "TU SALA FAVORITA";
+                    width: 800px;
+                    height: 80px;
+                    font-weight: 200;
+                    background: black;
+                    text-color: white;
+                    clicked => { root.trivia2_selected(); }
+                }
+                VerticalLayout {
+                    spacing: 50px;
+                    alignment: center;
+                    padding-top: 100px;
+                    AppButton {
+                    text: "VOLVER AL INICIO";
+                    width: 800px;
+                    height: 80px;
+                    font-weight: 600;
+                    background: transparent;
+                    text-color: black;
+                    clicked => { root.return_to_start(); }
+                }
+                }
+                
+            }
+        }
+    }
+
+    // Callbacks
+    in-out property <string> user_name;
+    callback trivia1_selected;
+    callback trivia2_selected;
+    callback return_to_start;
+}
