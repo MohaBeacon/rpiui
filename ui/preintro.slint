@@ -28,7 +28,7 @@ export component PreintroScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "¡PARTICIPÁ DE LAS TRIVIAS  Y SUMÁ PUNTOS!";
-                font-size: 40px;
+                font-size: 73px;
                 font-weight: 800;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -46,7 +46,7 @@ export component PreintroScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "ESCANEÁ TU PULSERA PARA PARTICIPAR ";
-                font-size: 50px;
+                font-size: 73px;
                 font-weight: 800;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -58,14 +58,16 @@ export component PreintroScreen inherits Rectangle {
         }
 
         // Downward arrow
-        Rectangle {
+        VerticalLayout {
+            padding-top: 150px;
+            Rectangle {
             width: parent.width;
             height: 300px;
             background: #FF3900;
             Path {
-                width: 100px;
-                height: 100px;
-                commands: "M11 5V-14A1 1 0 007-14V5L3 0A1 1 0 001 2L8 10C9 11 9 11 10 10L17 2A1 1 0 0015 0L11 5";
+                width: 312px;
+                height: 437px;
+                commands: "M22 10V-28A2 2 0 0014-28V10L6 0A2 2 0 002 4L17 22C18 23 18 23 19 22L34 4A2 2 0 0030 0L22 10";
                 stroke: black;
                 stroke-width: 10px;
                 fill: black;
@@ -73,6 +75,7 @@ export component PreintroScreen inherits Rectangle {
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2 + 100px;
             }
+        }
         }
     }
 }

@@ -5,7 +5,7 @@ edition = "2024"
 
 
 [dependencies]
-slint = "1.13"
+slint = {version="1.13", features = ["backend-linuxkms", "renderer-software"]}
 pcsc = "2.4"
 regex = "1.8.1" 
 lazy_static = "1.4"

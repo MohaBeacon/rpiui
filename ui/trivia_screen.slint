@@ -29,11 +29,12 @@ export component TriviaScreen inherits Rectangle {
     VerticalLayout {
         width: parent.width;
         alignment: center;
+        y: 240px;
     
 
         Text {
             text: trivia_name == "TRIVIA 1" ? "TU CALLROOM FAVORITO" : trivia_name == "TRIVIA 2" ? "TU SALA FAVORITA" : trivia_name;
-            font-size: 75px;
+            font-size: 80px;
             font-weight: 800;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -50,13 +51,13 @@ export component TriviaScreen inherits Rectangle {
             padding-top: 100px;
 
             Rectangle {
-                height: 100px;
+                height: 460px;
                 opacity: fade_question ? 1.0 : 0.0;
                 animate opacity { duration: root.transition_duration; easing: ease-in-out; }
                 visible: fade_question || self.opacity > 0.0;
                 Text {
                     text: questions[current_question];
-                    font-size: 45px;
+                    font-size: 80px;
                     font-weight: 800;
                     horizontal-alignment: center;
                     wrap: word-wrap;
@@ -79,9 +80,9 @@ export component TriviaScreen inherits Rectangle {
                         for answer[idx] in answers[current_question] : AnswerButton {
                             text: answer;
                             enabled: !answered;
-                            width: 600px;
-                            height: 80px;
-                            font-weight: 100;
+                            width: 800px;
+                            height: 180px;
+                            font-weight: 250;
                             text-color: white;
                             background: black;
                             clicked => {
@@ -119,60 +120,52 @@ export component TriviaScreen inherits Rectangle {
             visible: fade_results || self.opacity > 0.0;
             VerticalLayout {
                 width: 100%;
-                spacing: 100px;
                 alignment: center;
                 VerticalLayout {
-                    spacing: 20px;
                     alignment: center;
                     Text {
                         text: "\{floor(score/5)} RESPUESTAS CORRECTAS";
-                        font-size: 45px;
+                        font-size: 80px;
                         horizontal-alignment: center;
                         wrap: word-wrap;
                         width: 50%;
-                        font-weight: 800;
+                        font-weight: 500;
                     }
                     Text {
                         text: "SUMASTE";
                         color: white;
-                        font-size: 45px;
+                        font-size: 73px;
                         horizontal-alignment: center;
-                        wrap: word-wrap;
-                        width: 50%;
-                        font-weight: 800;
+                        font-weight: 500;
                     }
                     Text {
                         text: "\{score}";
                         color: white;
-                        font-size: 120px;
+                        font-size: 300px;
                         horizontal-alignment: center;
-                        wrap: word-wrap;
-                        width: 50%;
-                        font-weight: 1500;
+                        font-weight: 900;
                     }
                     Text {
                         text: "PUNTOS";
                         color: white;
-                        font-size: 45px;
+                        font-size: 73px;
                         horizontal-alignment: center;
-                        wrap: word-wrap;
-                        width: 50%;
-                        font-weight: 800;
+                        font-weight: 500;
                     }
                     Text {
                         text: "¡GRACIAS POR PARTICIPAR!";
-                        font-size: 45px;
+                        font-size: 88px;
                         horizontal-alignment: center;
                         wrap: word-wrap;
                         width: 50%;
-                        font-weight: 800;
+                        font-weight: 500;
                     }
                 }
                 HorizontalLayout {
                     alignment: center;
                     VerticalBox {
-                        padding-top: 100px;
-                        spacing: 100px;
+                        padding-top: 150px;
+                        spacing: 50px;
                         alignment: center;
                         AppButton {
                             text: "PARTICIPAR DE OTRA TRIVIA";
@@ -181,6 +174,8 @@ export component TriviaScreen inherits Rectangle {
                             background: transparent;
                             text-color: black;
                             enabled: true;
+                            font-weight: 600;
+
                             clicked => {
                                 navigate_to = "quiz-select";
                                 next_question = current_question; 
@@ -197,6 +192,7 @@ export component TriviaScreen inherits Rectangle {
                             background: transparent;
                             text-color: black;
                             enabled: true;
+                            font-weight: 600;
                             clicked => {
                                 navigate_to = "start";
                                 debug_button_clicked = true;

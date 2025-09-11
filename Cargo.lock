@@ -1991,6 +1991,7 @@ dependencies = [
  "i-slint-core",
  "i-slint-renderer-femtovg",
  "input",
+ "libseat",
  "memmap2",
  "nix",
  "raw-window-handle",
@@ -2664,6 +2665,26 @@ dependencies = [
  "bitflags 2.9.3",
  "libc",
  "redox_syscall 0.5.17",
+]
+
+[[package]]
+name = "libseat"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c23a245bbd5790c690791c4fe6eefafe4c75851226288a71cb657601135aa00c"
+dependencies = [
+ "errno",
+ "libseat-sys",
+ "log",
+]
+
+[[package]]
+name = "libseat-sys"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "134621e50557e8698a96ccff3eadbc6f4b449d5d12f8aa48fcef8d40b4b02725"
+dependencies = [
+ "pkg-config",
 ]
 
 [[package]]
