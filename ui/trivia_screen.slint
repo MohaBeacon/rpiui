@@ -1,25 +1,36 @@
-import { AppButton } from "AppButton.slint";
-import { AnswerButton } from "AnswerButton.slint";
-import { VerticalBox } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { Logo } from "Logo.slint";
+import { AnswerButton } from "AnswerButton.slint";
+import { AppButton } from "AppButton.slint";
 
 export component TriviaScreen inherits Rectangle {
     width: 100%;
     height: 100%;
     background: #FF3900;
 
-    // Logo with absolute positioning
+    // Debug property
+    private property <bool> debug_button_clicked: false;
+
+    // Logo positioning
     Logo {
         x: (parent.width - 800px) / 2;
         y: 100px;
     }
 
-    // Content in VerticalBox, starting below logo
+    // Animation properties
+    in-out property <bool> fade_question: true;
+    in-out property <bool> fade_answers: true;
+    in-out property <bool> fade_results: false;
+    in-out property <int> next_question: 0;
+    private property <duration> transition_duration: 500ms;
+    private property <string> navigate_to: "";
+
+    // Main layout
     VerticalLayout {
         width: parent.width;
         alignment: center;
+    
 
-        // Trivia name
         Text {
             text: trivia_name == "TRIVIA 1" ? "TU CALLROOM FAVORITO" : trivia_name == "TRIVIA 2" ? "TU SALA FAVORITA" : trivia_name;
             font-size: 75px;
@@ -32,132 +43,171 @@ export component TriviaScreen inherits Rectangle {
             font-family: "Montserrat";
         }
 
-        if !quiz_finished: VerticalLayout {
+        if !quiz_finished && questions.length > 0 && answers.length > 0: VerticalLayout {
             width: 100%;
             spacing: 50px;
             alignment: center;
-            Text {
-                text: questions[current_question];
-                font-size: 45px;
-                font-weight: 800;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 80%;
-                font-family: "Montserrat";
-                color: white;
+            padding-top: 100px;
+
+            Rectangle {
+                height: 100px;
+                opacity: fade_question ? 1.0 : 0.0;
+                animate opacity { duration: root.transition_duration; easing: ease-in-out; }
+                visible: fade_question || self.opacity > 0.0;
+                Text {
+                    text: questions[current_question];
+                    font-size: 45px;
+                    font-weight: 800;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                    width: 80%;
+                    font-family: "Montserrat";
+                    color: white;
+                }
             }
-            HorizontalLayout {
-                alignment: center;
-            VerticalLayout { // Removed unnecessary Rectangle, simplified to VerticalLayout
-                spacing: 50px;
-                alignment: center;
-                
-                for answer[idx] in answers[current_question] : AnswerButton {
-                    text: answer;
-                    enabled: !answered;
-                    width: 600px;
-                    height: 80px;
-                    font-weight: 100;
-                    text-color: white;
-                    background: black;
-                    clicked => {
-                        if (idx == correct_answers[current_question]) {
-                            score += 5;
-                        }
-                        answered = true;
-                        if (current_question < questions.length - 1) {
-                            current_question += 1;
-                            answered = false;
-                        } else {
-                            quiz_finished = true;
-                            submit_score(score);
+
+            Rectangle {
+                opacity: fade_answers ? 1.0 : 0.0;
+                animate opacity { duration: root.transition_duration; easing: ease-in-out; }
+                visible: fade_answers || self.opacity > 0.0;
+                HorizontalLayout {
+                    alignment: center;
+                    VerticalLayout {
+                        padding-top: 100px;
+                        spacing: 50px;
+                        alignment: center;
+                        for answer[idx] in answers[current_question] : AnswerButton {
+                            text: answer;
+                            enabled: !answered;
+                            width: 600px;
+                            height: 80px;
+                            font-weight: 100;
+                            text-color: white;
+                            background: black;
+                            clicked => {
+                                debug("Answered question \{current_question}, answer index \{idx}");
+                                if (idx == correct_answers[current_question]) {
+                                    score += 5;
+                                }
+                                answered = true;
+                                if (current_question < questions.length - 1) {
+                                    debug("Fading out, next question: \{current_question + 1}");
+                                    root.fade_question = false;
+                                    root.fade_answers = false;
+                                    next_question = current_question + 1;
+                                    start-transition();
+                                } else {
+                                    stop-transition();
+                                    debug("Last question answered, showing results");
+                                    root.fade_question = false;
+                                    root.fade_answers = false;
+                                    quiz_finished = true;
+                                    root.fade_results = true;
+                                    submit_score(score);
+                                    
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
         }
 
-        if quiz_finished: VerticalLayout {
-            width: 100%;
-            spacing: 100px;
-            alignment: center;
+        if quiz_finished: Rectangle {
+            opacity: fade_results ? 1.0 : 0.0;
+            animate opacity { duration: root.transition_duration; easing: ease-in-out; }
+            visible: fade_results || self.opacity > 0.0;
             VerticalLayout {
-                spacing: 20px;
-                alignment: center;
-                Text {
-                text: "\{floor(score/5)} RESPUESTAS CORRECTAS";
-                font-size: 45px;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 50%;
-                font-weight: 800;
-            }
-            Text {
-                text: "SUMASTE";
-                color: white;
-                font-size: 45px;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 50%;
-                font-weight: 800;
-            }
-            Text {
-                text: "\{score}";
-                color: white;
-                font-size: 120px;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 50%;
-                font-weight: 1500;
-            }
-            Text {
-                text: "PUNTOS";
-                color: white;
-                font-size: 45px;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 50%;
-                font-weight: 800;
-            }
-            Text {
-                text: "¡GRACIAS POR PARTICIPAR!";
-                font-size: 45px;
-                horizontal-alignment: center;
-                wrap: word-wrap;
-                width: 50%;
-                font-weight: 800;
-            }
-            }
-            
-            HorizontalLayout {
-                alignment: center;
-            VerticalBox {
-                padding-top: 100px;
+                width: 100%;
                 spacing: 100px;
                 alignment: center;
-                AppButton {
-                    text: "PARTICIPAR DE OTRA TRIVIA";
-                    width: 600px;
-                    height: 80px;
-                    background: transparent;
-                    text-color: black;
-                    clicked => {
-                        root.return-to-quiz-select();
+                VerticalLayout {
+                    spacing: 20px;
+                    alignment: center;
+                    Text {
+                        text: "\{floor(score/5)} RESPUESTAS CORRECTAS";
+                        font-size: 45px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "SUMASTE";
+                        color: white;
+                        font-size: 45px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "\{score}";
+                        color: white;
+                        font-size: 120px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 1500;
+                    }
+                    Text {
+                        text: "PUNTOS";
+                        color: white;
+                        font-size: 45px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
+                    }
+                    Text {
+                        text: "¡GRACIAS POR PARTICIPAR!";
+                        font-size: 45px;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                        width: 50%;
+                        font-weight: 800;
                     }
                 }
-                AppButton {
-                    text: "VOLVER AL INICIO";
-                    width: 600px;
-                    height: 80px;
-                    background: transparent;
-                    text-color: black;
-                    clicked => {
-                        root.return-to-start();
+                HorizontalLayout {
+                    alignment: center;
+                    VerticalBox {
+                        padding-top: 100px;
+                        spacing: 100px;
+                        alignment: center;
+                        AppButton {
+                            text: "PARTICIPAR DE OTRA TRIVIA";
+                            width: 600px;
+                            height: 80px;
+                            background: transparent;
+                            text-color: black;
+                            enabled: true;
+                            clicked => {
+                                navigate_to = "quiz-select";
+                                next_question = current_question; 
+                                debug_button_clicked = true;
+                                debug("Clicked 'Participar de otra trivia', setting navigate_to to quiz-select");
+                                start-navigation();
+                                root.return-to-quiz-select();
+                            }
+                        }
+                        AppButton {
+                            text: "VOLVER AL INICIO";
+                            width: 600px;
+                            height: 80px;
+                            background: transparent;
+                            text-color: black;
+                            enabled: true;
+                            clicked => {
+                                navigate_to = "start";
+                                debug_button_clicked = true;
+                                debug("Clicked 'Volver al inicio', setting navigate_to to start");
+                                start-navigation();
+                                root.return-to-start();
+                            }
+                        }
                     }
                 }
             }
-        }
         }
     }
 
@@ -168,8 +218,77 @@ export component TriviaScreen inherits Rectangle {
     callback return-to-start;
     callback return-to-quiz-select;
     callback submit_score(string);
+    callback start-transition;
+    callback stop-transition;
+    callback start-navigation();
+    callback stop-navigation();
     in-out property <int> score: 0;
     in-out property <bool> answered: false;
     in-out property <int> current_question: 0;
     in-out property <bool> quiz_finished: false;
+    in-out property <string> current_screen;
+
+    // Single-shot transition timer
+    transition_timer := Timer {
+        interval: root.transition_duration;
+        running: false;  // Controlled manually
+        triggered => {
+            if (next_question < questions.length) {
+                debug("Advancing to question \{next_question}");
+                current_question = next_question;
+                answered = false;
+                root.fade_question = true;
+                root.fade_answers = true;
+            } else {
+                debug("No more questions, stopping transition");
+                quiz_finished = true;
+                root.fade_results = true;
+            }
+        }
+    }
+
+    start-transition => {
+        debug("Starting transition for question \{current_question + 1}");
+        if (next_question < questions.length) {
+            next_question = current_question + 1;
+            transition_timer.start();
+        }
+    }
+
+    stop-transition => {
+        debug("Stopping transition_timer");
+        transition_timer.stop();
+         // Sync to prevent accidental triggers
+    }
+
+    // Single-shot navigation timer
+    navigation_timer := Timer {
+        interval: root.transition_duration;
+        running: false;
+        triggered => {
+            debug("Navigation timer triggered, navigate_to: \{navigate_to}");
+            current_question = 0;
+            next_question = 0;
+            answered = false;
+            quiz_finished = false;
+            score = 0;
+            root.fade_question = true;
+            root.fade_answers = true;
+            root.fade_results = false;
+            }
+        }
+
+
+    start-navigation => {
+        debug("Starting navigation");
+        if (next_question < questions.length) {
+            navigation_timer.start();
+        }
+    }
+
+    stop-navigation => {
+        debug("Stopping navigation");
+        navigation_timer.stop();
+        next_question = current_question;  // Sync to prevent accidental triggers
+    }
 }

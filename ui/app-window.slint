@@ -13,69 +13,166 @@ export component AppWindow inherits Window {
     in-out property <string> user_name: "";
     in-out property <string> current_screen: "welcome";
     in-out property <string> trivia_name;
+    in-out property <bool> fade_question: true;
+    in-out property <bool> fade_answers: true;
+    in-out property <bool> fade_results: false;
+    in-out property <bool> quiz_finished: false;
+    in-out property <int> current_question: 0;
+    in-out property <int> next_question: 0;
+
+
     callback submit_score(string);
+    callback return-to-start;
+    callback return-to-quiz-select;
+    callback start_transition();
+    callback stop-transition();
 
     // Define arrays explicitly to ensure integer type
     property <[int]> trivia1_correct_answers: [1, 0, 0, 0, 1];
     property <[int]> trivia2_correct_answers: [0, 0, 0, 1];
 
+    // Animation control for screens
+    private property <bool> show_preintro: current_screen == "preintro";
+    private property <bool> show_welcome: current_screen == "welcome";
+    private property <bool> show_trivia: current_screen == "trivia1" || current_screen == "trivia2";
+
+    return-to-start => {
+        debug("Received return-to-start callback");
+        root.fade_question = true;
+        root.fade_answers = true;
+        root.fade_results = false;
+        root.current_screen = "preintro";
+        root.quiz_finished = false;
+    }
+    return-to-quiz-select => {
+        debug("Received return-to-quiz-select callback");
+        root.current_screen = "welcome";
+        root.fade_question = true;
+        root.fade_answers = true;
+        root.fade_results = false;
+        root.quiz_finished = false;
+        root.current_question = 0;
+    }
+
     VerticalBox {
-        width: 100%;
+        height: 100%; // Fill window height
 
-        if current_screen == "preintro": PreintroScreen {
-            width: 100%;
+        // Single Rectangle to manage all screens with animations
+        Rectangle {
             height: 100%;
+            // PreintroScreen
+            preintro_container := Rectangle {
+                height: 100%;
+                opacity: show_preintro ? 1.0 : 0.0;
+                animate opacity { duration: 500ms; easing: ease-in-out; }
+                visible: show_preintro || self.opacity > 0.0;
+                PreintroScreen {
+                    height: 100%;
+                    
+                }
+            }
+
+            // WelcomeScreen
+            welcome_container := Rectangle {
+                height: 100%;
+                opacity: show_welcome ? 1.0 : 0.0;
+                animate opacity { duration: 500ms; easing: ease-in-out; }
+                visible: show_welcome || self.opacity > 0.0;
+                WelcomeScreen {
+
+                    height: 100%;
+                    user_name: root.user_name;
+                    trivia1_selected => {
+                        debug("Trivia 1 selected");
+                        root.trivia_name = "TRIVIA 1";
+                        root.current_screen = "trivia1";
+                        root.fade_question = true;
+                        root.fade_answers = true;
+                        root.fade_results = false;
+                        trivia.start-transition();
+                        trivia.stop-navigation();
+                    }
+                    trivia2_selected => {
+                        debug("Trivia 2 selected");
+                        root.trivia_name = "TRIVIA 2";
+                        root.current_screen = "trivia2";
+                        root.fade_question = true;
+                        root.fade_answers = true;
+                        root.fade_results = false;
+                        trivia.start-transition();
+                        trivia.stop-navigation();
+
+
+                    }
+                    return_to_start => {
+                        debug("Returning to preintro from welcome");
+                        root.current_screen = "preintro";
+                        root.fade_question = false;
+                        root.fade_answers = false;
+                        root.fade_results = false;
+                        trivia.start-transition();
+                        trivia.stop-navigation();
+
+
+                    }
+                }
+            }
+
+            // TriviaScreen
+            trivia_container := Rectangle {
+                height: 100%;
+                opacity: show_trivia ? 1.0 : 0.0;
+                animate opacity { duration: 500ms; easing: ease-in-out; }
+                visible: show_trivia || self.opacity > 0.0;
+                trivia :=TriviaScreen {
+                    height: 100%;
+                    trivia_name: root.trivia_name;
+                    fade_question: root.fade_question;
+                    fade_answers: root.fade_answers;
+                    fade_results: root.fade_results;
+                    questions: current_screen == "trivia1" ? [
+                        "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
+                        "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
+                        "3. Matador (Mario Kempes) ¿Por qué es recordado Mario “el Matador” Kempes en la historia del fútbol argentino?",
+                        "4. Willy (Guillermo Vilas) ¿Qué logro histórico consiguió Guillermo “Willy” Vilas en el tenis?",
+                        "5. Pelusa (Diego Maradona) ¿Por qué le decían “Pelusa” a Diego Maradona?"
+                    ] : [
+                        "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
+                        "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",
+                        "3. Maracaná ¿Qué acontecimiento deportivo marcó al Estadio Maracaná en 1950?",
+                        "4. Las Vegas ¿Qué particularidad hace famosa a Las Vegas en el deporte y el entretenimiento?"
+                    ];
+                    answers: current_screen == "trivia1" ? [
+                        ["a) Fue la primera argentina en ganar un Mundial de Hockey sobre Césped", "b) Fue elegida ocho veces la mejor jugadora del mundo por la FIH", "c) Ganó dos medallas de oro olímpicas"],
+                        ["a) Fue el primer argentino en ser campeón de la NBA", "b) Fue el jugador más alto de los San Antonio Spurs", "c) Fue entrenador asistente antes de retirarse"],
+                        ["a) Fue goleador y figura en el Mundial de 1978", "b) Fue el primer argentino en jugar en el Real Madrid", "c) Ganó la Copa América en 1987"],
+                        ["a) Ganó 4 torneos de Grand Slam", "b) Fue número 1 del ranking ATP durante dos años consecutivos", "c) Fue capitán de Copa Davis durante 20 años"],
+                        ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
+                    ] : [
+                        ["a) Muhammad Ali peleó contra Joe Frazier en “La Pelea del Siglo” (1971)", "b) Fue sede de la final del Mundial de Fútbol 1994", "c) Allí se disputó el primer Super Bowl"],
+                        ["a) Es el único Grand Slam que se juega sobre césped", "b) Es el torneo más antiguo de tenis en Sudamérica", "c) Fue el primer torneo en permitir raquetas de grafito"],
+                        ["a) La final del Mundial donde Brasil perdió con Uruguay, conocida como el “Maracanazo”", "b) La primera final de Copa Libertadores entre Boca y River", "c) El debut internacional de Pelé"],
+                        ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
+                    ];
+                    correct_answers: current_screen == "trivia1" ? root.trivia1_correct_answers : root.trivia2_correct_answers;
+                    return-to-start => { root.return-to-start(); }
+                    return-to-quiz-select => { root.return-to-quiz-select(); }
+                    submit_score(score) => { root.submit_score(score); }
+                }
+            }
         }
 
-        if current_screen == "welcome": WelcomeScreen {
-            width: 100%;
+        // Fallback for debugging
+        if !show_preintro && !show_welcome && !show_trivia: Rectangle {
             height: 100%;
-            user_name: root.user_name;
-            trivia1_selected => {
-                current_screen = "trivia1";
-                trivia_name = "TRIVIA 1";
+            background: #FF0000;
+            Text {
+                text: "No screen selected. Current screen: \{root.current_screen}";
+                color: white;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                font-size: 24px;
             }
-            trivia2_selected => {
-                current_screen = "trivia2";
-                trivia_name = "TRIVIA 2";
-            }
-            return_to_start => {
-                current_screen = "preintro";
-            }
-        }
-
-        if current_screen == "trivia1" || current_screen == "trivia2": TriviaScreen {
-            width: 100%;
-            height: 100%;
-            trivia_name: root.trivia_name;
-            questions: current_screen == "trivia1" ? [
-                "1. Lucha (Luciana Aymar) Cuál es el mayor logro de Luciana “Lucha” Aymar en el hockey?",
-                "2. Manu (Emanuel Ginóbili) ¿Qué hito consiguió Manu Ginóbili en la NBA?",
-                "3. Matador (Mario Kempes) ¿Por qué es recordado Mario “el Matador” Kempes en la historia del fútbol argentino?",
-                "4. Willy (Guillermo Vilas) ¿Qué logro histórico consiguió Guillermo “Willy” Vilas en el tenis?",
-                "5. Pelusa (Diego Maradona) ¿Por qué le decían “Pelusa” a Diego Maradona?"
-            ] : [
-                "1. Madison Square Garden (Square Garden) ¿Cuál de estos eventos históricos tuvo lugar en el Madison Square Garden?",
-                "2. Wimbledon ¿Qué lo hace único a Wimbledon dentro del tenis?",
-                "3. Maracaná ¿Qué acontecimiento deportivo marcó al Estadio Maracaná en 1950?",
-                "4. Las Vegas ¿Qué particularidad hace famosa a Las Vegas en el deporte y el entretenimiento?"
-            ];
-            answers: current_screen == "trivia1" ? [
-                ["a) Fue la primera argentina en ganar un Mundial de Hockey sobre Césped", "b) Fue elegida ocho veces la mejor jugadora del mundo por la FIH", "c) Ganó dos medallas de oro olímpicas"],
-                ["a) Fue el primer argentino en ser campeón de la NBA", "b) Fue el jugador más alto de los San Antonio Spurs", "c) Fue entrenador asistente antes de retirarse"],
-                ["a) Fue goleador y figura en el Mundial de 1978", "b) Fue el primer argentino en jugar en el Real Madrid", "c) Ganó la Copa América en 1987"],
-                ["a) Ganó 4 torneos de Grand Slam", "b) Fue número 1 del ranking ATP durante dos años consecutivos", "c) Fue capitán de Copa Davis durante 20 años"],
-                ["a) Porque de chico jugaba en un potrero llamado Villa Pelusa", "b) Porque tenía mucho pelo enrulado en su infancia", "c) Porque era muy rápido y parecía “volar como una pelusa”"]
-            ] : [
-                ["a) Muhammad Ali peleó contra Joe Frazier en “La Pelea del Siglo” (1971)", "b) Fue sede de la final del Mundial de Fútbol 1994", "c) Allí se disputó el primer Super Bowl"],
-                ["a) Es el único Grand Slam que se juega sobre césped", "b) Es el torneo más antiguo de tenis en Sudamérica", "c) Fue el primer torneo en permitir raquetas de grafito"],
-                ["a) La final del Mundial donde Brasil perdió con Uruguay, conocida como el “Maracanazo”", "b) La primera final de Copa Libertadores entre Boca y River", "c) El debut internacional de Pelé"],
-                ["a) Es la ciudad que más títulos olímpicos organizó", "b) Es conocida mundialmente por ser sede de grandes peleas de boxeo y UFC", "c) Fue la primera ciudad en tener un casino dentro de un estadio"]
-            ];
-            correct_answers: current_screen == "trivia1" ? root.trivia1_correct_answers : root.trivia2_correct_answers;
-            return-to-start => { current_screen = "preintro"; }
-            return-to-quiz-select => { current_screen = "welcome"; }
-            submit_score(score) => { root.submit_score(score); }
         }
     }
 }
