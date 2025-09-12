@@ -34,13 +34,13 @@ export component TriviaScreen inherits Rectangle {
 
         Text {
             text: trivia_name == "TRIVIA 1" ? "TU CALLROOM FAVORITO" : trivia_name == "TRIVIA 2" ? "TU SALA FAVORITA" : trivia_name;
-            font-size: 67px;
-            font-weight: 800;
+            font-size: 60pt;
+            font-weight: 600;
             horizontal-alignment: center;
             vertical-alignment: center;
             color: black;
             wrap: word-wrap;
-            width: 50%;
+            width: 80%;
             font-family: "Montserrat";
         }
 
@@ -51,17 +51,17 @@ export component TriviaScreen inherits Rectangle {
             padding-top: 30px;
 
             Rectangle {
-                height: 400px;
+                height: 500px;
                 opacity: fade_question ? 1.0 : 0.0;
                 animate opacity { duration: root.transition_duration; easing: ease-in-out; }
                 visible: fade_question || self.opacity > 0.0;
                 Text {
                     text: questions[current_question];
-                    font-size: 67px;
-                    font-weight: 800;
+                    font-size: 60pt;
+                    font-weight: 600;
                     horizontal-alignment: center;
                     wrap: word-wrap;
-                    width: 80%;
+                    width: 95%;
                     font-family: "Montserrat";
                     color: white;
                 }
@@ -82,7 +82,7 @@ export component TriviaScreen inherits Rectangle {
                             enabled: !answered;
                             width: 800px;
                             height: 180px;
-                            font-weight: 250;
+                            font-weight: 400;
                             text-color: white;
                             background: black;
                             clicked => {
@@ -123,41 +123,62 @@ export component TriviaScreen inherits Rectangle {
                 alignment: center;
                 VerticalLayout {
                     alignment: center;
+                    padding-top: 50px;
+                    spacing: 20px;
                     Text {
                         text: "\{floor(score/5)} RESPUESTAS CORRECTAS";
-                        font-size: 67px;
+                        font-size: 66pt;
                         horizontal-alignment: center;
                         wrap: word-wrap;
                         width: 50%;
-                        font-weight: 700;
+                        font-weight: 600;
                         font-family: "Montserrat";
                     }
-                    Text {
-                        text: "SUMASTE";
-                        color: white;
-                        font-size: 41.25px;
-                        horizontal-alignment: center;
-                        font-weight: 500;
-                        font-family: "Montserrat";
-                    }
-                    Text {
-                        text: "\{score}";
-                        color: white;
-                        font-size: 300px;
-                        horizontal-alignment: center;
-                        font-weight: 900;
-                        font-family: "Montserrat";
-                    }
-                    Text {
-                        text: "PUNTOS";
-                        color: white;
-                        font-size: 41.25px;
-                        horizontal-alignment: center;
-                        font-weight: 500;
-                        font-family: "Montserrat";
-                    }
+                    VerticalLayout {  
+                        spacing: 20px;     // no extra gap between items
+                        padding: 0px;  
+
+                        Rectangle {  
+                            height: 60px; // fixes tight box height
+                            Text {  
+                                text: "SUMASTE";  
+                                color: white;  
+                                font-size: 55pt;  
+                                horizontal-alignment: center;  
+                                vertical-alignment: center;  
+                                font-weight: 500;  
+                                font-family: "Montserrat";  
+                            }  
+                        }  
+
+                        Rectangle {  
+                            height: 300px;  
+                            Text {  
+                                text: "\{score}";  
+                                color: white;  
+                                font-size: 300pt;  
+                                horizontal-alignment: center;  
+                                vertical-alignment: center;  
+                                font-weight: 800;  
+                                font-family: "Montserrat";  
+                            }  
+                        }  
+
+                        Rectangle {  
+                            height: 60px;  
+                            Text {  
+                                text: "PUNTOS";  
+                                color: white;  
+                                font-size: 55pt;  
+                                horizontal-alignment: center;  
+                                vertical-alignment: center;  
+                                font-weight: 500;  
+                                font-family: "Montserrat";  
+                            }  
+                        }  
+                    }  
                     VerticalLayout {
-                        padding-top: 20px;
+                        padding-top: 50px;
                         alignment: center;
                         Text {
                         

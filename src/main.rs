@@ -432,7 +432,6 @@ fn post_multiple_guests_and_scores(
             let username = SharedString::from(username);
             slint::invoke_from_event_loop(move || {
                 if let Some(ui) = weak.upgrade() {
-                    ui.set_user_name(username);
                 }
             }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
         }
@@ -670,7 +669,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let weak = ui_handle.clone();
                         slint::invoke_from_event_loop(move || {
                             if let Some(ui) = weak.upgrade() {
-                                ui.set_user_name(SharedString::from(""));
                             }
                         }).unwrap_or_else(|e| eprintln!("Event loop error: {}", e));
                     }
