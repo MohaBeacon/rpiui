@@ -17,7 +17,7 @@ export component WelcomeScreen inherits Rectangle {
     VerticalBox {
         width: parent.width;
         alignment: center;
-        y: 240px;
+        y: 220px;
 
      
 
@@ -28,14 +28,14 @@ export component WelcomeScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "WELCOME \{user_name}!";
-                font-size: 100px;
-                font-weight: 600;
+                font-size: 133px;
+                font-weight: 800;
                 horizontal-alignment: center;
                 vertical-alignment: center;
                 color: black;
                 wrap: word-wrap;
                 width: 80%;
-                font-family: "Montserrat Extra Bold";
+                font-family: "Montserrat";
             }
         }
 
@@ -46,14 +46,14 @@ export component WelcomeScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "¿ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
-                font-size: 60px;
+                font-size: 73px;
                 font-weight: 600;
                 horizontal-alignment: center;
                 vertical-alignment: center;
                 color: white;
                 wrap: word-wrap;
                 width: 60%;
-                font-family: "Montserrat ExtraBold";
+                font-family: "Montserrat";
             }
         }
 
@@ -92,7 +92,7 @@ export component WelcomeScreen inherits Rectangle {
                     text: "VOLVER AL INICIO";
                     width: 800px;
                     height: 80px;
-                    font-weight: 600;
+                    font-weight: 800;
                     background: transparent;
                     text-color: black;
                     clicked => { root.return_to_start(); }
