@@ -5,13 +5,13 @@ export component AppButton inherits Rectangle {
     in property <int> font-weight: 400;
     background: #FF3900;
     callback clicked;
-    border-radius: 30px;
+    border-radius: 80px;
     border-width: 50px;
     border-color: transparent;
 
     Text {
         text: root.text;
-        font-size: 53px;
+        font-size: 70pt;
         color: root.text-color;
         horizontal-alignment: center;
         wrap: word-wrap;
@@ -42,6 +42,35 @@ export component AnswerButton inherits Rectangle {
     Text {
         text: root.text;
         font-size: 34pt;
+        color: root.text-color;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+        width: 80%;
+        font-family: "Montserrat";
+        font-weight: root.font-weight;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component BackButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <color> text-color: white;
+    in property <int> font-weight: 400;
+    background: #FF3900;
+    callback clicked;
+    border-radius: 30px;
+    border-width: 50px;
+    border-color: transparent;
+    height: 360px;
+
+    Text {
+        text: root.text;
+        font-size: 40pt;
         color: root.text-color;
         horizontal-alignment: center;
         wrap: word-wrap;

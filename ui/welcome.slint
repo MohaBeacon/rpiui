@@ -1,6 +1,7 @@
 import { VerticalBox } from "std-widgets.slint";
 import { AppButton } from "AppButton.slint";
 import { Logo } from "Logo.slint";
+import {BackButton} from "AppButton.slint";
 
 export component WelcomeScreen inherits Rectangle {
     width: 1080px;
@@ -17,7 +18,6 @@ export component WelcomeScreen inherits Rectangle {
     VerticalBox {
         width: parent.width;
         alignment: center;
-        y: 220px;
 
      
 
@@ -28,7 +28,7 @@ export component WelcomeScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "WELCOME \{user_name}!";
-                font-size: 133px;
+                font-size: 100pt;
                 font-weight: 800;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -46,7 +46,7 @@ export component WelcomeScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "¿ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
-                font-size: 73px;
+                font-size: 55pt;
                 font-weight: 600;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -65,11 +65,11 @@ export component WelcomeScreen inherits Rectangle {
             VerticalBox {
                 spacing: 50px;
                 alignment: center;
-                width: 800px;
+                width: 1000px;
                 AppButton {
                     text: "TU CALLROOM FAVORITO";
-                    width: 800px;
-                    height: 80px;
+                    width: 1000px;
+                    height: 200px;
                     font-weight: 200;
                     background: black;
                     text-color: white;
@@ -77,8 +77,8 @@ export component WelcomeScreen inherits Rectangle {
                 }
                 AppButton {
                     text: "TU SALA FAVORITA";
-                    width: 800px;
-                    height: 80px;
+                    width: 1000px;
+                    height: 200px;
                     font-weight: 200;
                     background: black;
                     text-color: white;
@@ -88,9 +88,9 @@ export component WelcomeScreen inherits Rectangle {
                     spacing: 50px;
                     alignment: center;
                     padding-top: 100px;
-                    AppButton {
+                    BackButton {
                     text: "VOLVER AL INICIO";
-                    width: 800px;
+                    width: 1000px;
                     height: 80px;
                     font-weight: 800;
                     background: transparent;

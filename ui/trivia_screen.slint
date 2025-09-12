@@ -1,7 +1,7 @@
 import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { Logo } from "Logo.slint";
 import { AnswerButton } from "AnswerButton.slint";
-import { AppButton } from "AppButton.slint";
+import { AppButton, BackButton } from "AppButton.slint";
 
 export component TriviaScreen inherits Rectangle {
     width: 100%;
@@ -200,10 +200,10 @@ export component TriviaScreen inherits Rectangle {
                         padding-top: 100px;
                         spacing: 50px;
                         alignment: center;
-                        AppButton {
+                        BackButton {
                             text: "PARTICIPAR DE OTRA TRIVIA";
                             width: 600px;
-                            height: 80px;
+                            height: 100px;
                             background: transparent;
                             text-color: black;
                             enabled: true;
@@ -218,10 +218,10 @@ export component TriviaScreen inherits Rectangle {
                                 root.return-to-quiz-select();
                             }
                         }
-                        AppButton {
+                        BackButton {
                             text: "VOLVER AL INICIO";
                             width: 600px;
-                            height: 80px;
+                            height: 100px;
                             background: transparent;
                             text-color: black;
                             enabled: true;
