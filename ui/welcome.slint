@@ -18,16 +18,17 @@ export component WelcomeScreen inherits Rectangle {
     VerticalBox {
         width: parent.width;
         alignment: center;
+        spacing: 20px;
 
      
 
         // Welcome message
         Rectangle {
             width: parent.width;
-            height: 200px;
+            height: 400px;
             background: #FF3900;
             Text {
-                text: "WELCOME \{user_name}!";
+                text: "WELCOME \{uppercase_username}!";
                 font-size: 100pt;
                 font-weight: 800;
                 horizontal-alignment: center;
@@ -105,6 +106,7 @@ export component WelcomeScreen inherits Rectangle {
 
     // Callbacks
     in-out property <string> user_name;
+    property <string> uppercase_username: user_name.to-uppercase();
     callback trivia1_selected;
     callback trivia2_selected;
     callback return_to_start;
