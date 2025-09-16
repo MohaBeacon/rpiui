@@ -1,7 +1,6 @@
 import { VerticalBox } from "std-widgets.slint";
-import { AppButton } from "AppButton.slint";
 import { Logo } from "Logo.slint";
-import {BackButton} from "AppButton.slint";
+import {BackButton,AppButton} from "buttons.slint";
 
 export component WelcomeScreen inherits Rectangle {
     width: 1080px;
@@ -28,8 +27,8 @@ export component WelcomeScreen inherits Rectangle {
             height: 400px;
             background: #FF3900;
             Text {
-                text: "WELCOME \{uppercase_username}!";
-                font-size: 100pt;
+                text: "¡BIENVENIDO \{uppercase_username}!";
+                font-size: 80pt;
                 font-weight: 800;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -47,7 +46,7 @@ export component WelcomeScreen inherits Rectangle {
             background: #FF3900;
             Text {
                 text: "¿ESTÁS LISTO/A? ELEGÍ EN QUÉ TRIVIA VAS A PARTICIPAR";
-                font-size: 55pt;
+                font-size: 45pt;
                 font-weight: 600;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -70,7 +69,7 @@ export component WelcomeScreen inherits Rectangle {
                 AppButton {
                     text: "TU CALLROOM FAVORITO";
                     width: 1000px;
-                    height: 200px;
+                    height: 150px;
                     font-weight: 200;
                     background: black;
                     text-color: white;
@@ -79,7 +78,7 @@ export component WelcomeScreen inherits Rectangle {
                 AppButton {
                     text: "TU SALA FAVORITA";
                     width: 1000px;
-                    height: 200px;
+                    height: 150px;
                     font-weight: 200;
                     background: black;
                     text-color: white;

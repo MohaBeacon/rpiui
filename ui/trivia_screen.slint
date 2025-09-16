@@ -1,7 +1,6 @@
 import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { Logo } from "Logo.slint";
-import { AnswerButton } from "AnswerButton.slint";
-import { AppButton, BackButton } from "AppButton.slint";
+import { AppButton, BackButton,AnswerButton } from "buttons.slint";
 
 export component TriviaScreen inherits Rectangle {
     width: 100%;
@@ -29,35 +28,40 @@ export component TriviaScreen inherits Rectangle {
     VerticalLayout {
         width: parent.width;
         alignment: center;
-        y: 220px;
-    
-
-        Text {
+        padding-top: 150px;
+        spacing: 20px;
+        
+        VerticalLayout {
+            spacing: 5px;
+            Text {
             text: trivia_name == "TRIVIA 1" ? "TU CALLROOM FAVORITO" : trivia_name == "TRIVIA 2" ? "TU SALA FAVORITA" : trivia_name;
-            font-size: 60pt;
+            font-size: 50pt;
             font-weight: 600;
             horizontal-alignment: center;
             vertical-alignment: center;
             color: black;
             wrap: word-wrap;
-            width: 80%;
+            width: 90%;
             font-family: "Montserrat";
         }
 
+        }
+       
+
         if !quiz_finished && questions.length > 0 && answers.length > 0: VerticalLayout {
             width: 100%;
-            spacing: 50px;
+            spacing: 30px;
             alignment: center;
-            padding-top: 30px;
+            padding-top: 20px;
 
             Rectangle {
-                height: 500px;
+                height: 220px;
                 opacity: fade_question ? 1.0 : 0.0;
                 animate opacity { duration: root.transition_duration; easing: ease-in-out; }
                 visible: fade_question || self.opacity > 0.0;
                 Text {
                     text: questions[current_question];
-                    font-size: 60pt;
+                    font-size: 45pt;
                     font-weight: 600;
                     horizontal-alignment: center;
                     wrap: word-wrap;
@@ -74,15 +78,15 @@ export component TriviaScreen inherits Rectangle {
                 HorizontalLayout {
                     alignment: center;
                     VerticalLayout {
-                        padding-top: 20px;
-                        spacing: 50px;
+                        padding-top: 30px;
+                        spacing: 20px;
                         alignment: center;
                         for answer[idx] in answers[current_question] : AnswerButton {
                             text: answer;
                             enabled: !answered;
-                            width: 800px;
-                            height: 180px;
-                            font-weight: 400;
+                            width: 1000px;
+                            height: 165px;
+                            font-weight: 300;
                             text-color: white;
                             background: black;
                             clicked => {
@@ -198,12 +202,12 @@ export component TriviaScreen inherits Rectangle {
                     alignment: center;
                     VerticalBox {
                         padding-top: 100px;
-                        spacing: 50px;
+                        spacing: 30px;
                         alignment: center;
                         BackButton {
                             text: "PARTICIPAR DE OTRA TRIVIA";
-                            width: 600px;
-                            height: 100px;
+                            width: 1000px;
+                            height: 180px;
                             background: transparent;
                             text-color: black;
                             enabled: true;
@@ -220,7 +224,7 @@ export component TriviaScreen inherits Rectangle {
                         }
                         BackButton {
                             text: "VOLVER AL INICIO";
-                            width: 600px;
+                            width: 1000px;
                             height: 100px;
                             background: transparent;
                             text-color: black;

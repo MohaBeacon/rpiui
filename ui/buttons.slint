@@ -11,7 +11,7 @@ export component AppButton inherits Rectangle {
 
     Text {
         text: root.text;
-        font-size: 70pt;
+        font-size: 50pt;
         color: root.text-color;
         horizontal-alignment: center;
         wrap: word-wrap;
@@ -34,18 +34,18 @@ export component AnswerButton inherits Rectangle {
     in property <int> font-weight: 400;
     background: #FF3900;
     callback clicked;
-    border-radius: 30px;
+    border-radius: 50px;
     border-width: 50px;
     border-color: transparent;
-    height: 360px;
+    height: 300px;
 
     Text {
         text: root.text;
-        font-size: 34pt;
+        font-size: 30pt;
         color: root.text-color;
         horizontal-alignment: center;
         wrap: word-wrap;
-        width: 80%;
+        width: 100%;
         font-family: "Montserrat";
         font-weight: root.font-weight;
     }
@@ -70,7 +70,7 @@ export component BackButton inherits Rectangle {
 
     Text {
         text: root.text;
-        font-size: 40pt;
+        font-size: 30pt;
         color: root.text-color;
         horizontal-alignment: center;
         wrap: word-wrap;
