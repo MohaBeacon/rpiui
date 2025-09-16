@@ -55,7 +55,7 @@ export component TriviaScreen inherits Rectangle {
             padding-top: 20px;
 
             Rectangle {
-                height: 220px;
+                height: 300px;
                 opacity: fade_question ? 1.0 : 0.0;
                 animate opacity { duration: root.transition_duration; easing: ease-in-out; }
                 visible: fade_question || self.opacity > 0.0;
